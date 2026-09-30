@@ -77,7 +77,25 @@ function rain(){
 }
 const rainP=rain();
 
-const keys={};addEventListener('keydown',e=>{keys[e.code]=true;if(e.code==='KeyC')player.crouch=!player.crouch;if(e.code==='Digit1')setOrder('ADVANCE');if(e.code==='Digit2')setOrder('HOLD');if(e.code==='Digit3')setOrder('FALL BACK');if(e.code==='Escape'&&started)togglePause()});addEventListener('keyup',e=>keys[e.code]=false);
+const keys={};
+const mobile={x:0,y:0,active:false,look:false,lastX:0,lastY:0,run:false};
+function mobileInput(){
+ const mc=document.getElementById('mobileControls'),stick=document.getElementById('stick'),knob=document.getElementById('knob');
+ if(!mc)return;
+ const setStick=e=>{const r=stick.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;let x=e.clientX-cx,y=e.clientY-cy;const m=Math.min(43,Math.hypot(x,y));if(Math.hypot(x,y)>43){const a=Math.atan2(y,x);x=Math.cos(a)*43;y=Math.sin(a)*43}mobile.x=x/43;mobile.y=y/43;knob.style.transform='translate('+x+'px,'+y+'px)'};
+ stick.addEventListener('pointerdown',e=>{mobile.active=true;stick.setPointerCapture(e.pointerId);setStick(e)});
+ stick.addEventListener('pointermove',e=>{if(mobile.active)setStick(e)});
+ stick.addEventListener('pointerup',()=>{mobile.active=false;mobile.x=mobile.y=0;knob.style.transform='translate(0,0)'});
+ renderer.domElement.addEventListener('pointerdown',e=>{if(e.clientX<innerWidth*.42)return;mobile.look=true;mobile.lastX=e.clientX;mobile.lastY=e.clientY});
+ renderer.domElement.addEventListener('pointermove',e=>{if(!mobile.look||e.clientX<innerWidth*.42)return;player.yaw-=(e.clientX-mobile.lastX)*.006;player.pitch-=(e.clientY-mobile.lastY)*.004;player.pitch=Math.max(-1.35,Math.min(1.35,player.pitch));mobile.lastX=e.clientX;mobile.lastY=e.clientY});
+ renderer.domElement.addEventListener('pointerup',()=>mobile.look=false);
+ document.getElementById('fireBtn').addEventListener('pointerdown',()=>fire());
+ document.getElementById('crouchBtn').addEventListener('pointerdown',()=>player.crouch=!player.crouch);
+ document.getElementById('runBtn').addEventListener('pointerdown',()=>mobile.run=!mobile.run);
+ document.querySelectorAll('#orderBtns button').forEach(b=>b.addEventListener('pointerdown',()=>setOrder(b.dataset.order)));
+}
+function fire(){const f=new THREE.Vector3(-Math.sin(player.yaw),0,-Math.cos(player.yaw));burst(player.pos.x+f.x*5,player.pos.z+f.z*5,.22);flare(player.pos.x+f.x*4,player.pos.z+f.z*4);log('RIFLE','Shot fired into the smoke.')}
+mobileInput();addEventListener('keydown',e=>{keys[e.code]=true;if(e.code==='KeyC')player.crouch=!player.crouch;if(e.code==='Digit1')setOrder('ADVANCE');if(e.code==='Digit2')setOrder('HOLD');if(e.code==='Digit3')setOrder('FALL BACK');if(e.code==='Escape'&&started)togglePause()});addEventListener('keyup',e=>keys[e.code]=false);
 let started=false,paused=false;
 document.getElementById('start').onclick=()=>{started=true;document.getElementById('menu').classList.add('hidden');document.getElementById('hud').classList.remove('hidden');renderer.domElement.requestPointerLock?.();log('Company commander','Move with the next wave. Stay with your squad.')};
 function togglePause(){paused=!paused;document.getElementById('pause').classList.toggle('hidden',!paused);if(paused)document.exitPointerLock?.();else renderer.domElement.requestPointerLock?.()}
@@ -97,9 +115,9 @@ function updateAI(dt){
  }
 }
 function updatePlayer(dt){
- const speed=(keys.ShiftLeft||keys.ShiftRight?7.2:4.2)*(player.crouch?.48:1);
+ const speed=(keys.ShiftLeft||keys.ShiftRight||mobile.run?7.2:4.2)*(player.crouch?.48:1);
  const f=new THREE.Vector3(-Math.sin(player.yaw),0,-Math.cos(player.yaw)),r=new THREE.Vector3(Math.cos(player.yaw),0,-Math.sin(player.yaw));
- const dir=new THREE.Vector3();if(keys.KeyW)dir.add(f);if(keys.KeyS)dir.sub(f);if(keys.KeyD)dir.add(r);if(keys.KeyA)dir.sub(r);if(dir.lengthSq())dir.normalize();
+ const dir=new THREE.Vector3();if(keys.KeyW)dir.add(f);if(keys.KeyS)dir.sub(f);if(keys.KeyD)dir.add(r);if(keys.KeyA)dir.sub(r);dir.x+=r.x*mobile.x+f.x*(-mobile.y);dir.z+=r.z*mobile.x+f.z*(-mobile.y);if(dir.lengthSq())dir.normalize();
  player.pos.addScaledVector(dir,speed*dt);player.pos.x=THREE.MathUtils.clamp(player.pos.x,-72,72);player.pos.z=THREE.MathUtils.clamp(player.pos.z,-112,112);
  const bob=dir.lengthSq()?Math.sin(simTime*(keys.ShiftLeft?12:8))*.025:0;
  camera.position.set(player.pos.x,player.pos.y-(player.crouch?.52:0)+bob,player.pos.z);camera.rotation.set(player.pitch,player.yaw,0);
