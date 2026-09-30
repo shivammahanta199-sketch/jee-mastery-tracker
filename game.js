@@ -80,10 +80,11 @@ document.querySelectorAll('.stick').forEach((el,i)=>{
  const set=e=>{if(!active)return;const r=el.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;
   let x=THREE.MathUtils.clamp((e.clientX-cx)/(r.width*.45),-1,1),y=THREE.MathUtils.clamp((e.clientY-cy)/(r.height*.45),-1,1);
   if(i===0){mobile.lx=x;mobile.ly=y}else{mobile.rx=x;mobile.ry=y}
+  el.querySelector('.knob').style.transform=`translate(${x*42}px,${y*42}px)`;
  };
  el.addEventListener('pointerdown',e=>{active=true;el.setPointerCapture(e.pointerId);set(e)});
  el.addEventListener('pointermove',set);
- const end=()=>{active=false;if(i===0)mobile.lx=mobile.ly=0;else mobile.rx=mobile.ry=0};el.addEventListener('pointerup',end);el.addEventListener('pointercancel',end);
+ const end=()=>{active=false;if(i===0)mobile.lx=mobile.ly=0;else mobile.rx=mobile.ry=0;el.querySelector('.knob').style.transform='translate(0,0)'};el.addEventListener('pointerup',end);el.addEventListener('pointercancel',end);
 });
 let boost=false;const boostBtn=document.getElementById('boost');
 boostBtn.onpointerdown=()=>boost=true;boostBtn.onpointerup=()=>boost=false;boostBtn.onpointercancel=()=>boost=false;
@@ -97,9 +98,10 @@ reset();
 function update(dt){
  if(flight.crashed){if(keys.KeyR)reset();return}
  let roll=(keys.KeyD?1:0)-(keys.KeyA?1:0)+mobile.rx;
- let pitch=(keys.KeyS?1:0)-(keys.KeyW?1:0)-mobile.ry;
+ let pitch=(keys.KeyS?1:0)-(keys.KeyW?1:0)+mobile.ry;
  let yaw=(keys.KeyE?1:0)-(keys.KeyQ?1:0)+mobile.lx;
  let thr=(keys.Space?1:0)-(keys.ShiftLeft||keys.ShiftRight?1:0)-mobile.ly;
+ // Mobile left stick: UP = throttle up, DOWN = throttle down; right stick UP = pitch forward/nose down.
  if(locked){roll+=mouse.x*1.2;pitch+=mouse.y*1.2;mouse.x*=Math.pow(.0001,dt);mouse.y*=Math.pow(.0001,dt)}
  roll=expo(dz(THREE.MathUtils.clamp(roll,-1,1)));pitch=expo(dz(THREE.MathUtils.clamp(pitch,-1,1)));yaw=expo(dz(THREE.MathUtils.clamp(yaw,-1,1),.045),.18);thr=THREE.MathUtils.clamp(thr,-1,1);
  const rates=boost?[17.5,12.8,17.5]:[15.5,10.5,15.5];
@@ -109,14 +111,14 @@ function update(dt){
 
  const targetThr=THREE.MathUtils.clamp(.61+thr*.43,0,1);flight.throttle+=(targetThr-flight.throttle)*(1-Math.exp(-dt*10));
  up.set(0,1,0).applyQuaternion(drone.quaternion);fwd.set(0,0,-1).applyQuaternion(drone.quaternion);right.set(1,0,0).applyQuaternion(drone.quaternion);
- const thrust=(boost?3.55:3.0)*9.81*flight.throttle;
+ const thrust=(boost?4.15:3.55)*9.81*flight.throttle;
  flight.vel.addScaledVector(up,thrust*dt);flight.vel.y-=9.81*dt;
 
  // aerodynamic drag: high speed stays fast but lateral slip is resisted
  const speed=flight.vel.length(),lateral=flight.vel.dot(right);flight.vel.addScaledVector(right,-lateral*(.95*dt));
  flight.vel.multiplyScalar(Math.max(0,1-(.045+speed*.0009)*dt));
  // Freestyle pilots convert nose-down attitude into forward speed.
- const dive=Math.max(0,-fwd.y);flight.vel.addScaledVector(fwd,(dive*19+(boost?7:2.5))*dt);
+ const dive=Math.max(0,-fwd.y);flight.vel.addScaledVector(fwd,(dive*12+(boost?5:1.5))*dt);
  const max=boost?105:86;if(flight.vel.length()>max)flight.vel.setLength(max);
  drone.position.addScaledVector(flight.vel,dt);
 
