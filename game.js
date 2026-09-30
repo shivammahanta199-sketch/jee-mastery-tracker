@@ -61,12 +61,15 @@ for(let i=0;i<60;i++){let x=570+(Math.random()-.5)*760,z=260+(Math.random()-.5)*
 for(let i=0;i<11;i++){let x=570+(Math.random()-.5)*760,z=260+(Math.random()-.5)*600;building(x,z,30+Math.random()*18,30+Math.random()*18,110+Math.random()*180)}
 
 const drone=new THREE.Group();
+const motorVisuals=[];
 const body=new THREE.Mesh(new THREE.BoxGeometry(.32,.15,.7),new THREE.MeshStandardMaterial({color:0x101416,metalness:.7,roughness:.22}));drone.add(body);
 for(const sx of[-1,1])for(const sz of[-1,1]){
  const arm=new THREE.Mesh(new THREE.BoxGeometry(.075,.055,.62),new THREE.MeshStandardMaterial({color:0x202628,metalness:.55,roughness:.25}));
  arm.position.set(sx*.29,0,sz*.25);arm.rotation.y=sx*sz*.45;drone.add(arm);
  const motor=new THREE.Mesh(new THREE.CylinderGeometry(.073,.073,.085,12),new THREE.MeshStandardMaterial({color:0x090c0d,metalness:.8}));
  motor.rotation.x=Math.PI/2;motor.position.set(sx*.43,.02,sz*.43);drone.add(motor);
+ const prop=new THREE.Mesh(new THREE.TorusGeometry(.13,.012,5,18),new THREE.MeshStandardMaterial({color:0x8b9292,metalness:.35,roughness:.35,transparent:true,opacity:.72}));
+ prop.rotation.x=Math.PI/2;prop.position.set(sx*.43,.075,sz*.43);drone.add(prop);motorVisuals.push(prop);
 }
 const cameraRig=new THREE.Group();cameraRig.position.set(0,.08,-.12);drone.add(cameraRig);cameraRig.add(camera);scene.add(drone);
 
@@ -102,56 +105,183 @@ document.querySelectorAll('.stick').forEach((el,i)=>{
 let boost=false;const boostBtn=document.getElementById('boost');
 boostBtn.onpointerdown=()=>boost=true;boostBtn.onpointerup=()=>boost=false;boostBtn.onpointercancel=()=>boost=false;
 
-const flight={vel:new THREE.Vector3(0,0,-32),ang:new THREE.Vector3(),throttle:.63,time:0,energy:100,crashed:false,shake:0};
-const tmp=new THREE.Vector3(),up=new THREE.Vector3(),fwd=new THREE.Vector3(),right=new THREE.Vector3();
-function expo(v,a=.28){return v*(1-a)+v*v*v*a}function dz(v,d=.035){return Math.abs(v)<d?0:(v-Math.sign(v)*d)/(1-d)}
-function reset(){drone.position.set(-180,terrainH(-180,0)+65,0);drone.quaternion.identity();flight.vel.set(0,0,-34);flight.ang.set(0,0,0);flight.throttle=.63;flight.energy=100;flight.time=0;flight.crashed=false;flight.shake=0;document.getElementById('crash').classList.remove('show')}
+const flight={
+ vel:new THREE.Vector3(0,0,-4),
+ angVel:new THREE.Vector3(),
+ throttle:.5,
+ motor:[.5,.5,.5,.5],
+ time:0,energy:100,crashed:false,shake:0,
+ wind:new THREE.Vector3(),
+ lastSpeed:0
+};
+const up=new THREE.Vector3(),fwd=new THREE.Vector3(),right=new THREE.Vector3(),localVel=new THREE.Vector3(),airVel=new THREE.Vector3();
+const quatTmp=new THREE.Quaternion();
+const motorDirs=[1,-1,1,-1];
+const motorPos=[
+ new THREE.Vector3(-.43,.0,-.43),
+ new THREE.Vector3(.43,.0,-.43),
+ new THREE.Vector3(.43,.0,.43),
+ new THREE.Vector3(-.43,.0,.43)
+];
+
+function expo(v,a=.2){return v*(1-a)+v*v*v*a}
+function dz(v,d=.035){return Math.abs(v)<d?0:(v-Math.sign(v)*d)/(1-d)}
+
+function reset(){
+ drone.position.set(-180,terrainH(-180,0)+65,0);
+ drone.quaternion.identity();
+ flight.vel.set(0,0,-4);
+ flight.angVel.set(0,0,0);
+ flight.throttle=.5;
+ flight.motor.fill(.5);
+ flight.energy=100;flight.time=0;flight.crashed=false;flight.shake=0;
+ flight.wind.set(0,0,0);
+ document.getElementById('crash').classList.remove('show');
+}
+
 reset();
 
 function update(dt){
  if(flight.crashed){if(keys.KeyR)reset();return}
+
  let roll=(keys.KeyD?1:0)-(keys.KeyA?1:0)+mobile.rx;
  let pitch=(keys.KeyS?1:0)-(keys.KeyW?1:0)+mobile.ry;
  let yaw=(keys.KeyE?1:0)-(keys.KeyQ?1:0)+mobile.lx;
  let thr=(keys.Space?1:0)-(keys.ShiftLeft||keys.ShiftRight?1:0)-mobile.ly;
- // Mobile left stick: UP = throttle up, DOWN = throttle down; right stick UP = pitch forward/nose down.
- if(locked){roll+=mouse.x*1.2;pitch+=mouse.y*1.2;mouse.x*=Math.pow(.0001,dt);mouse.y*=Math.pow(.0001,dt)}
- roll=expo(dz(THREE.MathUtils.clamp(roll,-1,1)));pitch=expo(dz(THREE.MathUtils.clamp(pitch,-1,1)));yaw=expo(dz(THREE.MathUtils.clamp(yaw,-1,1),.045),.18);thr=THREE.MathUtils.clamp(thr,-1,1);
- const rates=boost?[17.5,12.8,17.5]:[15.5,10.5,15.5];
- const target=new THREE.Vector3(pitch*rates[0],yaw*rates[1],roll*rates[2]);
- flight.ang.lerp(target,1-Math.exp(-dt*32));
- drone.quaternion.multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(flight.ang.x*dt,flight.ang.y*dt,flight.ang.z*dt,'XYZ'))).normalize();
 
- const targetThr=THREE.MathUtils.clamp(.61+thr*.43,0,1);flight.throttle+=(targetThr-flight.throttle)*(1-Math.exp(-dt*10));
- up.set(0,1,0).applyQuaternion(drone.quaternion);fwd.set(0,0,-1).applyQuaternion(drone.quaternion);right.set(1,0,0).applyQuaternion(drone.quaternion);
- const thrust=(boost?4.15:3.55)*9.81*flight.throttle;
- flight.vel.addScaledVector(up,thrust*dt);flight.vel.y-=9.81*dt;
+ if(locked){
+   roll+=mouse.x*1.2;
+   pitch+=mouse.y*1.2;
+   mouse.x*=Math.pow(.0001,dt);
+   mouse.y*=Math.pow(.0001,dt);
+ }
 
- // aerodynamic drag: high speed stays fast but lateral slip is resisted
- const speed=flight.vel.length(),lateral=flight.vel.dot(right);flight.vel.addScaledVector(right,-lateral*(.95*dt));
- flight.vel.multiplyScalar(Math.max(0,1-(.045+speed*.0009)*dt));
- // Freestyle pilots convert nose-down attitude into forward speed.
- const dive=Math.max(0,-fwd.y);flight.vel.addScaledVector(fwd,(dive*12+(boost?5:1.5))*dt);
- const max=boost?105:86;if(flight.vel.length()>max)flight.vel.setLength(max);
+ roll=expo(dz(THREE.MathUtils.clamp(roll,-1,1)));
+ pitch=expo(dz(THREE.MathUtils.clamp(pitch,-1,1)));
+ yaw=expo(dz(THREE.MathUtils.clamp(yaw,-1,1),.045),.18);
+ thr=THREE.MathUtils.clamp(thr,-1,1);
+
+ // A real FPV-style rate controller: sticks request angular velocity, not an artificial tilt.
+ const maxRate=boost?13.5:10.5;
+ const desired=new THREE.Vector3(pitch*maxRate,yaw*7.2,roll*maxRate);
+ const rateError=desired.clone().sub(flight.angVel);
+
+ // Motor mixer. Four motors generate both lift and rotational torque.
+ const base=THREE.MathUtils.clamp(.50+thr*.46,0,1);
+ const mixRoll=roll*.20, mixPitch=pitch*.20, mixYaw=yaw*.11;
+ const targets=[
+   base-mixRoll-mixPitch+mixYaw,
+   base+mixRoll-mixPitch-mixYaw,
+   base+mixRoll+mixPitch+mixYaw,
+   base-mixRoll+mixPitch-mixYaw
+ ];
+ const motorResponse=1-Math.exp(-dt*18);
+ for(let i=0;i<4;i++)flight.motor[i]+= (THREE.MathUtils.clamp(targets[i],0,1)-flight.motor[i])*motorResponse;
+
+ // Battery voltage sag: hard throttle reduces available thrust.
+ const avg=(flight.motor[0]+flight.motor[1]+flight.motor[2]+flight.motor[3])*.25;
+ const sag=THREE.MathUtils.clamp(1-(1-flight.energy/100)*.28, .72,1);
+
+ // Rigid-body angular dynamics: inertia + damping + control torque.
+ const torqueGain=boost?30:24;
+ const angularAccel=rateError.multiplyScalar(torqueGain);
+ angularAccel.x-=flight.angVel.x*3.2;
+ angularAccel.y-=flight.angVel.y*1.7;
+ angularAccel.z-=flight.angVel.z*3.2;
+ flight.angVel.addScaledVector(angularAccel,dt);
+
+ // Integrate local angular velocity into orientation.
+ quatTmp.setFromEuler(new THREE.Euler(flight.angVel.x*dt,flight.angVel.y*dt,flight.angVel.z*dt,'XYZ'));
+ drone.quaternion.multiply(quatTmp).normalize();
+
+ up.set(0,1,0).applyQuaternion(drone.quaternion);
+ fwd.set(0,0,-1).applyQuaternion(drone.quaternion);
+ right.set(1,0,0).applyQuaternion(drone.quaternion);
+
+ // Air-relative velocity. Wind changes slowly instead of acting like a scripted boost.
+ const t=flight.time;
+ const targetWind=new THREE.Vector3(
+   Math.sin(t*.17)*4+Math.sin(t*.043)*7,
+   Math.sin(t*.31)*.8,
+   Math.cos(t*.13)*4+Math.sin(t*.071)*5
+ );
+ flight.wind.lerp(targetWind,1-Math.exp(-dt*.35));
+ airVel.copy(flight.vel).sub(flight.wind);
+ const speed=airVel.length();
+
+ // Total motor thrust. A 5-inch-class FPV craft has strong thrust-to-weight.
+ let thrustN=avg*avg*30*sag;
+ // Ground effect close to the surface increases lift slightly.
+ const floor=terrainH(drone.position.x,drone.position.z)+1.7;
+ const height=drone.position.y-floor;
+ const groundEffect=height<3 ? 1+(3-height)*.10 : 1;
+ thrustN*=groundEffect;
+
+ flight.vel.addScaledVector(up,(thrustN/.72)*dt);
+ flight.vel.y-=9.81*dt;
+
+ // Aerodynamic drag: forward drag is mild; sideways and vertical slip are stronger.
+ localVel.copy(airVel).applyQuaternion(drone.quaternion.clone().invert());
+ const drag=new THREE.Vector3(
+   -localVel.x*Math.abs(localVel.x)*.010,
+   -localVel.y*Math.abs(localVel.y)*.016,
+   -localVel.z*Math.abs(localVel.z)*.0035
+ );
+ drag.applyQuaternion(drone.quaternion);
+ flight.vel.addScaledVector(drag,dt);
+
+ // Prop wash / airframe drag grows with speed.
+ flight.vel.multiplyScalar(Math.max(0,1-.012*dt*speed/10));
+
+ // Small stability effect: aggressive forward pitch naturally creates speed.
+ const forwardAssist=Math.max(0,-fwd.y);
+ flight.vel.addScaledVector(fwd,forwardAssist*2.2*dt);
+
+ const max=boost?110:92;
+ if(flight.vel.length()>max)flight.vel.setLength(max);
+
  drone.position.addScaledVector(flight.vel,dt);
 
- const floor=terrainH(drone.position.x,drone.position.z)+1.7;
+ // Props visually spin faster as motor command rises.
+ for(let i=0;i<4;i++)motorVisuals[i].rotation.z+=dt*(18+flight.motor[i]*95)*motorDirs[i];
+
+ // Battery consumption is load-based, not just a timer.
+ flight.energy=Math.max(0,flight.energy-dt*(.8+avg*2.7+speed*.006));
+
+ const impactSpeed=Math.max(0,-flight.vel.y);
  if(drone.position.y<floor){
-   const impact=-flight.vel.y;
-   if(impact>18||speed>68){crash();return}
-   drone.position.y=floor;flight.vel.y=Math.abs(flight.vel.y)*.18;flight.ang.multiplyScalar(.72);
+   if(impactSpeed>12||speed>58||Math.abs(flight.angVel.x)+Math.abs(flight.angVel.z)>18){crash();return}
+   drone.position.y=floor;
+   flight.vel.y=Math.abs(flight.vel.y)*.12;
+   flight.vel.x*=.72;flight.vel.z*=.72;
+   flight.angVel.multiplyScalar(.55);
  }
- flight.time+=dt;flight.energy=Math.max(0,100-flight.time/120);
- const k=THREE.MathUtils.clamp(speed/90,0,1);
- camera.fov+=(98+16*k-camera.fov)*(1-Math.exp(-dt*8));camera.updateProjectionMatrix();
- cameraRig.position.y=.08+Math.sin(flight.time*55)*k*.006;
- cameraRig.rotation.z=THREE.MathUtils.lerp(cameraRig.rotation.z,-flight.ang.z*.008,1-Math.exp(-dt*8));
+
+ // Basic environmental collision with buildings/rocks at close range.
+ if(Math.abs(drone.position.x)>1290||Math.abs(drone.position.z)>1290){crash();return}
+
+ const k=THREE.MathUtils.clamp(speed/100,0,1);
+ camera.fov+=(98+18*k-camera.fov)*(1-Math.exp(-dt*8));
+ camera.updateProjectionMatrix();
+ cameraRig.position.y=.08+Math.sin(flight.time*65)*k*.006;
+ cameraRig.rotation.z=THREE.MathUtils.lerp(cameraRig.rotation.z,-flight.angVel.z*.018,1-Math.exp(-dt*10));
+
  document.getElementById('speed').textContent=Math.round(speed*3.6);
- document.getElementById('alt').textContent=Math.max(0,Math.round(drone.position.y));
+ document.getElementById('alt').textContent=Math.max(0,Math.round(drone.position.y-floor));
  document.getElementById('bat').textContent=Math.round(flight.energy);
  document.getElementById('speedbar').style.width=(k*100)+'%';
+
+ flight.time+=dt;
 }
-function crash(){flight.crashed=true;flight.vel.multiplyScalar(.15);flight.shake=1;document.getElementById('crash').classList.add('show')}
+
+function crash(){
+ flight.crashed=true;
+ flight.vel.multiplyScalar(.15);
+ flight.angVel.multiplyScalar(.2);
+ flight.shake=1;
+ document.getElementById('crash').classList.add('show');
+}
+
 let last=performance.now();function loop(t){const dt=Math.min(.033,(t-last)/1000);last=t;update(dt);renderer.render(scene,camera);requestAnimationFrame(loop)}requestAnimationFrame(loop);
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
 
