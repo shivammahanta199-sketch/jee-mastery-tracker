@@ -77,14 +77,27 @@ const mouse={x:0,y:0};addEventListener('mousemove',e=>{if(locked){mouse.x+=e.mov
 const mobile={lx:0,ly:0,rx:0,ry:0};
 document.querySelectorAll('.stick').forEach((el,i)=>{
  let active=false;
- const set=e=>{if(!active)return;const r=el.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;
-  let x=THREE.MathUtils.clamp((e.clientX-cx)/(r.width*.45),-1,1),y=THREE.MathUtils.clamp((e.clientY-cy)/(r.height*.45),-1,1);
-  if(i===0){mobile.lx=x;mobile.ly=y}else{mobile.rx=x;mobile.ry=y}
-  el.querySelector('.knob').style.transform=`translate(${x*42}px,${y*42}px)`;
+ const knob=el.querySelector('.knob');
+ const resetStick=()=>{
+   active=false;
+   if(i===0){mobile.lx=0;mobile.ly=0}else{mobile.rx=0;mobile.ry=0}
+   knob.style.transform='translate(0px,0px)';
  };
- el.addEventListener('pointerdown',e=>{active=true;el.setPointerCapture(e.pointerId);set(e)});
+ const set=e=>{
+   if(!active)return;
+   const r=el.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;
+   const x=THREE.MathUtils.clamp((e.clientX-cx)/(r.width*.45),-1,1);
+   const y=THREE.MathUtils.clamp((e.clientY-cy)/(r.height*.45),-1,1);
+   if(i===0){mobile.lx=x;mobile.ly=y}else{mobile.rx=x;mobile.ry=y}
+   knob.style.transform='translate('+x*42+'px,'+y*42+'px)';
+ };
+ el.addEventListener('pointerdown',e=>{active=true;try{el.setPointerCapture(e.pointerId)}catch(_){};set(e)});
  el.addEventListener('pointermove',set);
- const end=()=>{active=false;if(i===0)mobile.lx=mobile.ly=0;else mobile.rx=mobile.ry=0;el.querySelector('.knob').style.transform='translate(0,0)'};el.addEventListener('pointerup',end);el.addEventListener('pointercancel',end);
+ el.addEventListener('pointerup',resetStick);
+ el.addEventListener('pointercancel',resetStick);
+ el.addEventListener('lostpointercapture',resetStick);
+ window.addEventListener('pointerup',resetStick,{passive:true});
+ window.addEventListener('pointercancel',resetStick,{passive:true});
 });
 let boost=false;const boostBtn=document.getElementById('boost');
 boostBtn.onpointerdown=()=>boost=true;boostBtn.onpointerup=()=>boost=false;boostBtn.onpointercancel=()=>boost=false;
