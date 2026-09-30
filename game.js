@@ -1,289 +1,129 @@
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.161.0/build/three.module.js';
+import * as THREE from 'three';
 
 const scene=new THREE.Scene();
-scene.background=new THREE.Color(0x86a3a6);
-scene.fog=new THREE.FogExp2(0x86a3a6,0.00048);
-
-const camera=new THREE.PerspectiveCamera(98,innerWidth/innerHeight,.025,5000);
+scene.background=new THREE.Color(0x777a75);
+scene.fog=new THREE.FogExp2(0x737671,0.009);
+const camera=new THREE.PerspectiveCamera(72,innerWidth/innerHeight,.05,900);
+camera.rotation.order='YXZ';
 const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
-renderer.setPixelRatio(Math.min(devicePixelRatio,1.45));renderer.setSize(innerWidth,innerHeight);
-renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
-renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.28;
+renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.setSize(innerWidth,innerHeight);renderer.shadowMap.enabled=true;
 document.body.appendChild(renderer.domElement);
 
-scene.add(new THREE.HemisphereLight(0xcce9ed,0x26362e,2.3));
-const sun=new THREE.DirectionalLight(0xffe8c6,4.2);sun.position.set(-700,1000,450);sun.castShadow=true;
-sun.shadow.mapSize.set(2048,2048);sun.shadow.camera.left=-800;sun.shadow.camera.right=800;sun.shadow.camera.top=800;sun.shadow.camera.bottom=-800;scene.add(sun);
+const hemi=new THREE.HemisphereLight(0xb8c0bf,0x302c25,1.7);scene.add(hemi);
+const sun=new THREE.DirectionalLight(0xd4d0c1,2.0);sun.position.set(-70,120,30);sun.castShadow=true;scene.add(sun);
 
-const terrainSize=2600,seg=170;
-function terrainH(x,z){
- const ridge=Math.sin(x*.0027+z*.0011)*42+Math.cos(z*.0021-x*.001)*34;
- const rolling=Math.sin(x*.006)*12+Math.cos(z*.005)*10+Math.sin((x-z)*.009)*6;
- const valley=Math.sin(x*.00155+1.7)*.5+.5;
- return ridge+rolling+valley*valley*75-55;
+const world=new THREE.Group();scene.add(world);
+const mat=(c,r=0)=>new THREE.MeshStandardMaterial({color:c,roughness:r||.92});
+const groundMat=mat(0x4f5048), mudMat=mat(0x3b3932), woodMat=mat(0x4b3a2c), sandMat=mat(0x69665b);
+const metalMat=mat(0x353733), clothA=mat(0x4a514a), clothB=mat(0x343b3b);
+
+function box(x,y,z,sx,sy,sz,m,rot=0){const o=new THREE.Mesh(new THREE.BoxGeometry(sx,sy,sz),m);o.position.set(x,y,z);o.rotation.y=rot;o.castShadow=o.receiveShadow=true;world.add(o);return o}
+function cyl(x,y,z,rad,h,m){const o=new THREE.Mesh(new THREE.CylinderGeometry(rad,rad*.9,h,8),m);o.position.set(x,y,z);o.castShadow=true;world.add(o);return o}
+function terrain(){
+  const g=new THREE.PlaneGeometry(500,500,70,70);g.rotateX(-Math.PI/2);
+  const p=g.attributes.position;
+  for(let i=0;i<p.count;i++){const x=p.getX(i),z=p.getZ(i);p.setY(i,-1.5+Math.sin(x*.018)*.7+Math.cos(z*.021)*.55+Math.sin((x+z)*.047)*.25)}
+  g.computeVertexNormals();const o=new THREE.Mesh(g,groundMat);o.receiveShadow=true;world.add(o);
 }
-const tg=new THREE.PlaneGeometry(terrainSize,terrainSize,seg,seg);tg.rotateX(-Math.PI/2);
-const tp=tg.attributes.position;
-for(let i=0;i<tp.count;i++)tp.setY(i,terrainH(tp.getX(i),tp.getZ(i)));
-tg.computeVertexNormals();
-const terrain=new THREE.Mesh(tg,new THREE.MeshStandardMaterial({color:0x3f6047,roughness:1,metalness:0}));
-terrain.receiveShadow=true;scene.add(terrain);
-
-const trunkG=new THREE.CylinderGeometry(.65,1.15,7,7),leafG=new THREE.ConeGeometry(4.7,15,8);
-const trunkM=new THREE.MeshStandardMaterial({color:0x3b2b20,roughness:1}),leafM=new THREE.MeshStandardMaterial({color:0x193a27,roughness:1});
-const trunks=new THREE.InstancedMesh(trunkG,trunkM,1500),leaves=new THREE.InstancedMesh(leafG,leafM,1500),dummy=new THREE.Object3D();
-for(let i=0;i<1500;i++){
- let x=(Math.random()-.5)*2300,z=(Math.random()-.5)*2300;
- if(Math.abs(z-Math.sin(x*.004)*90)<30){i--;continue}
- let y=terrainH(x,z),s=.65+Math.random()*1.65;
- dummy.position.set(x,y+3.5*s,z);dummy.scale.setScalar(s);dummy.rotation.y=Math.random()*6.28;dummy.updateMatrix();trunks.setMatrixAt(i,dummy.matrix);
- dummy.position.y=y+10*s;dummy.updateMatrix();leaves.setMatrixAt(i,dummy.matrix);
+function trench(z,depth=2.2){
+  box(0,0,z-5,145,depth,2.5,mudMat);
+  box(0,.1,z+5,145,depth,2.5,mudMat);
+  for(let x=-68;x<69;x+=7){box(x,.85,z-3.7,5.5,1.25,.42,woodMat,(Math.random()-.5)*.08);box(x,.85,z+3.7,5.5,1.25,.42,woodMat,(Math.random()-.5)*.08)}
+  for(let x=-66;x<67;x+=5){box(x,.15,z,3.8,.28,.45,woodMat)}
 }
-trunks.castShadow=leaves.castShadow=true;scene.add(trunks,leaves);
-
-const water=new THREE.Mesh(new THREE.PlaneGeometry(2300,125),new THREE.MeshPhysicalMaterial({color:0x1c6476,roughness:.08,metalness:.05,transparent:true,opacity:.86}));
-water.rotation.x=-Math.PI/2;water.position.y=4;scene.add(water);
-const rockM=new THREE.MeshStandardMaterial({color:0x5e625e,roughness:1});
-for(let i=0;i<220;i++){const x=(Math.random()-.5)*2200,z=Math.sin(x*.004)*75+(Math.random()-.5)*50,s=.5+Math.random()*3.5,r=new THREE.Mesh(new THREE.IcosahedronGeometry(s,1),rockM);r.position.set(x,5+s*.15,z);r.scale.y=.45+Math.random()*.6;r.rotation.set(Math.random(),Math.random(),Math.random());r.castShadow=true;scene.add(r)}
-
-for(let k=0;k<16;k++){
- const x=-1150+k*155,z=-820-Math.random()*320,h=190+Math.random()*330;
- const m=new THREE.Mesh(new THREE.ConeGeometry(145+Math.random()*120,h,9),new THREE.MeshStandardMaterial({color:0x40504b,roughness:1,flatShading:true}));
- m.position.set(x,h/2-25,z);m.rotation.y=Math.random();m.scale.z=.65;m.castShadow=true;scene.add(m);
+function crater(x,z,s){const r=s||3;const ring=new THREE.Mesh(new THREE.TorusGeometry(r,r*.12,6,14),mudMat);ring.rotation.x=Math.PI/2;ring.position.set(x,-1.25,z);world.add(ring);for(let i=0;i<6;i++){const rock=cyl(x+(Math.random()-.5)*r*1.7,-.8,z+(Math.random()-.5)*r*1.7,.18+Math.random()*.3,.3,soilRock);rock.rotation.z=Math.random()*2}}
+const soilRock=mat(0x5b5549);
+terrain();
+[-92,-55,-18,18,55,92].forEach((z,i)=>trench(z));
+for(let i=0;i<95;i++)crater((Math.random()-.5)*180,(Math.random()-.5)*185,1.5+Math.random()*4);
+for(let i=0;i<240;i++){const x=(Math.random()-.5)*220,z=(Math.random()-.5)*220;const h=.15+Math.random()*.5;box(x,-1.05+h/2,z,.18+Math.random()*.45,h,.18+Math.random()*.45,Math.random()>.35?mudMat:sandMat,Math.random()*3)}
+function barbed(x,z){
+  for(let i=-1;i<=1;i++){const p=box(x+i*2,-.4,z,3,.08,.08,metalMat,Math.PI/2);p.rotation.z=.15}
 }
+for(let z of [-73,-37,0,37,73])for(let x=-65;x<66;x+=10)barbed(x,z);
 
-const concrete=new THREE.MeshStandardMaterial({color:0x696c68,roughness:.94}),dark=new THREE.MeshStandardMaterial({color:0x292f30,roughness:.9});
-function building(x,z,w,d,h){
- const y=terrainH(x,z),b=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),concrete);b.position.set(x,y+h/2,z);b.castShadow=b.receiveShadow=true;scene.add(b);
- const roof=new THREE.Mesh(new THREE.BoxGeometry(w*.72,1.3,d*.5),dark);roof.position.set(x+.7,y+h+.7,z+.4);roof.castShadow=true;scene.add(roof);
+const squads=[];let player={pos:new THREE.Vector3(0,1.7,102),vel:new THREE.Vector3(),yaw:Math.PI,pitch:0,crouch:false,order:'HOLD',morale:100};
+const ray=new THREE.Raycaster();
+function soldier(team,x,z){
+  const g=new THREE.Group();g.position.set(x,-.85,z);g.userData={team,home:new THREE.Vector3(x,-.85,z),state:'hold',phase:Math.random()*6.28,alive:true};
+  const body=new THREE.Mesh(new THREE.CapsuleGeometry(.23,.72,4,7),team==='ally'?clothA:clothB);body.position.y=.7;body.castShadow=true;g.add(body);
+  const head=new THREE.Mesh(new THREE.SphereGeometry(.19,8,6),mat(0x9b8068));head.position.y=1.25;head.castShadow=true;g.add(head);
+  const pack=new THREE.Mesh(new THREE.BoxGeometry(.28,.42,.16),mat(0x2d332f));pack.position.set(0,.72,.18);g.add(pack);
+  world.add(g);squads.push(g);return g;
 }
-for(let i=0;i<60;i++){let x=570+(Math.random()-.5)*760,z=260+(Math.random()-.5)*600;building(x,z,12+Math.random()*40,12+Math.random()*40,10+Math.random()*85)}
-for(let i=0;i<11;i++){let x=570+(Math.random()-.5)*760,z=260+(Math.random()-.5)*600;building(x,z,30+Math.random()*18,30+Math.random()*18,110+Math.random()*180)}
+for(let i=0;i<18;i++)soldier('ally',(Math.random()-.5)*80,70+Math.random()*25);
+for(let i=0;i<22;i++)soldier('ally',(Math.random()-.5)*100,20+Math.random()*18);
+for(let i=0;i<24;i++)soldier('enemy',(Math.random()-.5)*105,-20-Math.random()*22);
+for(let i=0;i<20;i++)soldier('enemy',(Math.random()-.5)*100,-67-Math.random()*22);
 
-const drone=new THREE.Group();
-const motorVisuals=[];
-const body=new THREE.Mesh(new THREE.BoxGeometry(.32,.15,.7),new THREE.MeshStandardMaterial({color:0x101416,metalness:.7,roughness:.22}));drone.add(body);
-for(const sx of[-1,1])for(const sz of[-1,1]){
- const arm=new THREE.Mesh(new THREE.BoxGeometry(.075,.055,.62),new THREE.MeshStandardMaterial({color:0x202628,metalness:.55,roughness:.25}));
- arm.position.set(sx*.29,0,sz*.25);arm.rotation.y=sx*sz*.45;drone.add(arm);
- const motor=new THREE.Mesh(new THREE.CylinderGeometry(.073,.073,.085,12),new THREE.MeshStandardMaterial({color:0x090c0d,metalness:.8}));
- motor.rotation.x=Math.PI/2;motor.position.set(sx*.43,.02,sz*.43);drone.add(motor);
- const prop=new THREE.Mesh(new THREE.TorusGeometry(.13,.012,5,18),new THREE.MeshStandardMaterial({color:0x8b9292,metalness:.35,roughness:.35,transparent:true,opacity:.72}));
- prop.rotation.x=Math.PI/2;prop.position.set(sx*.43,.075,sz*.43);drone.add(prop);motorVisuals.push(prop);
+function tank(x,z,team,dir){
+ const g=new THREE.Group();g.position.set(x,-.7,z);g.rotation.y=dir;
+ const hull=new THREE.Mesh(new THREE.BoxGeometry(4.2,1.3,2.5),mat(team==='ally'?0x4a5144:0x454642));hull.castShadow=true;g.add(hull);
+ const top=new THREE.Mesh(new THREE.BoxGeometry(2.2,.8,1.8),metalMat);top.position.y=1;g.add(top);
+ for(let s of [-1,1])for(let i=-1;i<=1;i++){const w=new THREE.Mesh(new THREE.CylinderGeometry(.55,.55,.35,12),metalMat);w.rotation.z=Math.PI/2;w.position.set(i*1.35,0,s*1.28);g.add(w)}
+ world.add(g);return g;
 }
-const cameraRig=new THREE.Group();cameraRig.position.set(0,.08,-.12);drone.add(cameraRig);cameraRig.add(camera);scene.add(drone);
-
-const keys={};addEventListener('keydown',e=>{keys[e.code]=true;if(e.code==='KeyR')reset()});addEventListener('keyup',e=>keys[e.code]=false);
-let locked=false;renderer.domElement.addEventListener('click',()=>renderer.domElement.requestPointerLock?.());
-document.addEventListener('pointerlockchange',()=>locked=document.pointerLockElement===renderer.domElement);
-const mouse={x:0,y:0};addEventListener('mousemove',e=>{if(locked){mouse.x+=e.movementX*.0028;mouse.y+=e.movementY*.0028}});
-const mobile={lx:0,ly:0,rx:0,ry:0};
-document.querySelectorAll('.stick').forEach((el,i)=>{
- let active=false;
- const knob=el.querySelector('.knob');
- const resetStick=()=>{
-   active=false;
-   if(i===0){mobile.lx=0;mobile.ly=0}else{mobile.rx=0;mobile.ry=0}
-   knob.style.transform='translate(0px,0px)';
- };
- const set=e=>{
-   if(!active)return;
-   const r=el.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;
-   const x=THREE.MathUtils.clamp((e.clientX-cx)/(r.width*.45),-1,1);
-   const y=THREE.MathUtils.clamp((e.clientY-cy)/(r.height*.45),-1,1);
-   if(i===0){mobile.lx=x;mobile.ly=y}else{mobile.rx=x;mobile.ry=y}
-   knob.style.transform='translate('+x*42+'px,'+y*42+'px)';
- };
- el.addEventListener('pointerdown',e=>{active=true;try{el.setPointerCapture(e.pointerId)}catch(_){};set(e)});
- el.addEventListener('pointermove',set);
- el.addEventListener('pointerup',resetStick);
- el.addEventListener('pointercancel',resetStick);
- el.addEventListener('lostpointercapture',resetStick);
- window.addEventListener('pointerup',resetStick,{passive:true});
- window.addEventListener('pointercancel',resetStick,{passive:true});
-});
-let boost=false;const boostBtn=document.getElementById('boost');
-boostBtn.onpointerdown=()=>boost=true;boostBtn.onpointerup=()=>boost=false;boostBtn.onpointercancel=()=>boost=false;
-
-const flight={
- vel:new THREE.Vector3(0,0,-4),
- angVel:new THREE.Vector3(),
- throttle:.5,
- motor:[.5,.5,.5,.5],
- time:0,energy:100,crashed:false,shake:0,
- wind:new THREE.Vector3(),
- lastSpeed:0
-};
-const up=new THREE.Vector3(),fwd=new THREE.Vector3(),right=new THREE.Vector3(),localVel=new THREE.Vector3(),airVel=new THREE.Vector3();
-const quatTmp=new THREE.Quaternion();
-const motorDirs=[1,-1,1,-1];
-const motorPos=[
- new THREE.Vector3(-.43,.0,-.43),
- new THREE.Vector3(.43,.0,-.43),
- new THREE.Vector3(.43,.0,.43),
- new THREE.Vector3(-.43,.0,.43)
-];
-
-function expo(v,a=.2){return v*(1-a)+v*v*v*a}
-function dz(v,d=.035){return Math.abs(v)<d?0:(v-Math.sign(v)*d)/(1-d)}
-
-function reset(){
- drone.position.set(-180,terrainH(-180,0)+65,0);
- drone.quaternion.identity();
- flight.vel.set(0,0,-4);
- flight.angVel.set(0,0,0);
- flight.throttle=.5;
- flight.motor.fill(.5);
- flight.energy=100;flight.time=0;flight.crashed=false;flight.shake=0;
- flight.wind.set(0,0,0);
- document.getElementById('crash').classList.remove('show');
+const tanks=[tank(-38,52,'ally',0),tank(42,-48,'enemy',Math.PI),tank(75,15,'ally',Math.PI/2)];
+const fx=[];
+function burst(x,z,scale=1){
+ const s=new THREE.Mesh(new THREE.SphereGeometry(.7*scale,10,8),new THREE.MeshBasicMaterial({color:0xb6a58b,transparent:true,opacity:.75}));
+ s.position.set(x,-.7,z);world.add(s);fx.push({m:s,t:0,d:.6+Math.random()*.35});
 }
+function flare(x,z){const l=new THREE.PointLight(0xffc477,18,24);l.position.set(x,4,z);world.add(l);fx.push({m:l,t:0,d:.9})}
+function rain(){
+ const geo=new THREE.BufferGeometry(),n=700,a=new Float32Array(n*3);
+ for(let i=0;i<n;i++){a[i*3]=(Math.random()-.5)*230;a[i*3+1]=Math.random()*55;a[i*3+2]=(Math.random()-.5)*230}
+ geo.setAttribute('position',new THREE.BufferAttribute(a,3));const p=new THREE.Points(geo,new THREE.PointsMaterial({color:0xb9c1c0,size:.06,transparent:true,opacity:.45}));scene.add(p);return p
+}
+const rainP=rain();
 
-reset();
-
-function update(dt){
- if(flight.crashed){if(keys.KeyR)reset();return}
-
- let roll=(keys.KeyD?1:0)-(keys.KeyA?1:0)+mobile.rx;
- let pitch=(keys.KeyS?1:0)-(keys.KeyW?1:0)+mobile.ry;
- let yaw=(keys.KeyE?1:0)-(keys.KeyQ?1:0)+mobile.lx;
- let thr=(keys.Space?1:0)-(keys.ShiftLeft||keys.ShiftRight?1:0)-mobile.ly;
-
- if(locked){
-   roll+=mouse.x*1.2;
-   pitch+=mouse.y*1.2;
-   mouse.x*=Math.pow(.0001,dt);
-   mouse.y*=Math.pow(.0001,dt);
+const keys={};addEventListener('keydown',e=>{keys[e.code]=true;if(e.code==='KeyC')player.crouch=!player.crouch;if(e.code==='Digit1')setOrder('ADVANCE');if(e.code==='Digit2')setOrder('HOLD');if(e.code==='Digit3')setOrder('FALL BACK');if(e.code==='Escape'&&started)togglePause()});addEventListener('keyup',e=>keys[e.code]=false);
+let started=false,paused=false;
+document.getElementById('start').onclick=()=>{started=true;document.getElementById('menu').classList.add('hidden');document.getElementById('hud').classList.remove('hidden');renderer.domElement.requestPointerLock?.();log('Company commander','Move with the next wave. Stay with your squad.')};
+function togglePause(){paused=!paused;document.getElementById('pause').classList.toggle('hidden',!paused);if(paused)document.exitPointerLock?.();else renderer.domElement.requestPointerLock?.()}
+document.addEventListener('mousemove',e=>{if(!started||paused||document.pointerLockElement!==renderer.domElement)return;player.yaw-=e.movementX*.0022;player.pitch-=e.movementY*.0018;player.pitch=Math.max(-1.35,Math.min(1.35,player.pitch))});
+function setOrder(o){player.order=o;document.getElementById('orderText').textContent=o==='ADVANCE'?'ADVANCE':o==='FALL BACK'?'FALL BACK':'HOLD POSITION';document.getElementById('orderHint').textContent='ORDER RECEIVED · SQUAD MOVING';squads.filter(s=>s.userData.team==='ally').forEach(s=>s.userData.state=o.toLowerCase());log('ORDER',o==='ADVANCE'?'The line is moving forward.':'The squad adjusts to your command.')}
+function log(a,b){const el=document.createElement('div');el.className='log';el.innerHTML='<b>'+a+'</b> · '+b;document.getElementById('eventLog').appendChild(el);setTimeout(()=>el.remove(),7000)}
+let front=52,simTime=0,nextBurst=0,nextEvent=5;
+function updateAI(dt){
+ for(const s of squads){if(!s.userData.alive)continue;const u=s.userData;u.phase+=dt;
+   const toward=u.team==='ally'?1:-1;let targetZ=u.home.z;
+   if(u.team==='ally'&&player.order==='ADVANCE')targetZ-=20;
+   if(u.team==='ally'&&player.order==='FALL BACK')targetZ+=18;
+   if(u.team==='enemy')targetZ+=Math.sin(simTime*.18+u.phase)*2;
+   const dx=(Math.sin(simTime*.13+u.phase)*2.8);const target=new THREE.Vector3(u.home.x+dx,-.85,targetZ);
+   const d=s.position.distanceTo(target);if(d>.4)s.position.lerp(target,Math.min(1,dt*.35));
+   s.position.y=-.85+Math.sin(simTime*2.5+u.phase)*.025;s.rotation.y=Math.sin(simTime*.3+u.phase)*.25;
  }
-
- roll=expo(dz(THREE.MathUtils.clamp(roll,-1,1)));
- pitch=expo(dz(THREE.MathUtils.clamp(pitch,-1,1)));
- yaw=expo(dz(THREE.MathUtils.clamp(yaw,-1,1),.045),.18);
- thr=THREE.MathUtils.clamp(thr,-1,1);
-
- // A real FPV-style rate controller: sticks request angular velocity, not an artificial tilt.
- const maxRate=boost?13.5:10.5;
- const desired=new THREE.Vector3(pitch*maxRate,yaw*7.2,roll*maxRate);
- const rateError=desired.clone().sub(flight.angVel);
-
- // Motor mixer. Four motors generate both lift and rotational torque.
- const base=THREE.MathUtils.clamp(.50+thr*.46,0,1);
- const mixRoll=roll*.20, mixPitch=pitch*.20, mixYaw=yaw*.11;
- const targets=[
-   base-mixRoll-mixPitch+mixYaw,
-   base+mixRoll-mixPitch-mixYaw,
-   base+mixRoll+mixPitch+mixYaw,
-   base-mixRoll+mixPitch-mixYaw
- ];
- const motorResponse=1-Math.exp(-dt*18);
- for(let i=0;i<4;i++)flight.motor[i]+= (THREE.MathUtils.clamp(targets[i],0,1)-flight.motor[i])*motorResponse;
-
- // Battery voltage sag: hard throttle reduces available thrust.
- const avg=(flight.motor[0]+flight.motor[1]+flight.motor[2]+flight.motor[3])*.25;
- const sag=THREE.MathUtils.clamp(1-(1-flight.energy/100)*.28, .72,1);
-
- // Rigid-body angular dynamics: inertia + damping + control torque.
- const torqueGain=boost?30:24;
- const angularAccel=rateError.multiplyScalar(torqueGain);
- angularAccel.x-=flight.angVel.x*3.2;
- angularAccel.y-=flight.angVel.y*1.7;
- angularAccel.z-=flight.angVel.z*3.2;
- flight.angVel.addScaledVector(angularAccel,dt);
-
- // Integrate local angular velocity into orientation.
- quatTmp.setFromEuler(new THREE.Euler(flight.angVel.x*dt,flight.angVel.y*dt,flight.angVel.z*dt,'XYZ'));
- drone.quaternion.multiply(quatTmp).normalize();
-
- up.set(0,1,0).applyQuaternion(drone.quaternion);
- fwd.set(0,0,-1).applyQuaternion(drone.quaternion);
- right.set(1,0,0).applyQuaternion(drone.quaternion);
-
- // Air-relative velocity. Wind changes slowly instead of acting like a scripted boost.
- const t=flight.time;
- const targetWind=new THREE.Vector3(
-   Math.sin(t*.17)*4+Math.sin(t*.043)*7,
-   Math.sin(t*.31)*.8,
-   Math.cos(t*.13)*4+Math.sin(t*.071)*5
- );
- flight.wind.lerp(targetWind,1-Math.exp(-dt*.35));
- airVel.copy(flight.vel).sub(flight.wind);
- const speed=airVel.length();
-
- // Total motor thrust. A 5-inch-class FPV craft has strong thrust-to-weight.
- let thrustN=avg*avg*30*sag;
- // Ground effect close to the surface increases lift slightly.
- const floor=terrainH(drone.position.x,drone.position.z)+1.7;
- const height=drone.position.y-floor;
- const groundEffect=height<3 ? 1+(3-height)*.10 : 1;
- thrustN*=groundEffect;
-
- flight.vel.addScaledVector(up,(thrustN/.72)*dt);
- flight.vel.y-=9.81*dt;
-
- // Aerodynamic drag: forward drag is mild; sideways and vertical slip are stronger.
- localVel.copy(airVel).applyQuaternion(drone.quaternion.clone().invert());
- const drag=new THREE.Vector3(
-   -localVel.x*Math.abs(localVel.x)*.010,
-   -localVel.y*Math.abs(localVel.y)*.016,
-   -localVel.z*Math.abs(localVel.z)*.0035
- );
- drag.applyQuaternion(drone.quaternion);
- flight.vel.addScaledVector(drag,dt);
-
- // Prop wash / airframe drag grows with speed.
- flight.vel.multiplyScalar(Math.max(0,1-.012*dt*speed/10));
-
- // Small stability effect: aggressive forward pitch naturally creates speed.
- const forwardAssist=Math.max(0,-fwd.y);
- flight.vel.addScaledVector(fwd,forwardAssist*2.2*dt);
-
- const max=boost?110:92;
- if(flight.vel.length()>max)flight.vel.setLength(max);
-
- drone.position.addScaledVector(flight.vel,dt);
-
- // Props visually spin faster as motor command rises.
- for(let i=0;i<4;i++)motorVisuals[i].rotation.z+=dt*(18+flight.motor[i]*95)*motorDirs[i];
-
- // Battery consumption is load-based, not just a timer.
- flight.energy=Math.max(0,flight.energy-dt*(.8+avg*2.7+speed*.006));
-
- const impactSpeed=Math.max(0,-flight.vel.y);
- if(drone.position.y<floor){
-   if(impactSpeed>12||speed>58||Math.abs(flight.angVel.x)+Math.abs(flight.angVel.z)>18){crash();return}
-   drone.position.y=floor;
-   flight.vel.y=Math.abs(flight.vel.y)*.12;
-   flight.vel.x*=.72;flight.vel.z*=.72;
-   flight.angVel.multiplyScalar(.55);
- }
-
- // Basic environmental collision with buildings/rocks at close range.
- if(Math.abs(drone.position.x)>1290||Math.abs(drone.position.z)>1290){crash();return}
-
- const k=THREE.MathUtils.clamp(speed/100,0,1);
- camera.fov+=(98+18*k-camera.fov)*(1-Math.exp(-dt*8));
- camera.updateProjectionMatrix();
- cameraRig.position.y=.08+Math.sin(flight.time*65)*k*.006;
- cameraRig.rotation.z=THREE.MathUtils.lerp(cameraRig.rotation.z,-flight.angVel.z*.018,1-Math.exp(-dt*10));
-
- document.getElementById('speed').textContent=Math.round(speed*3.6);
- document.getElementById('alt').textContent=Math.max(0,Math.round(drone.position.y-floor));
- document.getElementById('bat').textContent=Math.round(flight.energy);
- document.getElementById('speedbar').style.width=(k*100)+'%';
-
- flight.time+=dt;
 }
-
-function crash(){
- flight.crashed=true;
- flight.vel.multiplyScalar(.15);
- flight.angVel.multiplyScalar(.2);
- flight.shake=1;
- document.getElementById('crash').classList.add('show');
+function updatePlayer(dt){
+ const speed=(keys.ShiftLeft||keys.ShiftRight?7.2:4.2)*(player.crouch?.48:1);
+ const f=new THREE.Vector3(-Math.sin(player.yaw),0,-Math.cos(player.yaw)),r=new THREE.Vector3(Math.cos(player.yaw),0,-Math.sin(player.yaw));
+ const dir=new THREE.Vector3();if(keys.KeyW)dir.add(f);if(keys.KeyS)dir.sub(f);if(keys.KeyD)dir.add(r);if(keys.KeyA)dir.sub(r);if(dir.lengthSq())dir.normalize();
+ player.pos.addScaledVector(dir,speed*dt);player.pos.x=THREE.MathUtils.clamp(player.pos.x,-72,72);player.pos.z=THREE.MathUtils.clamp(player.pos.z,-112,112);
+ const bob=dir.lengthSq()?Math.sin(simTime*(keys.ShiftLeft?12:8))*.025:0;
+ camera.position.set(player.pos.x,player.pos.y-(player.crouch?.52:0)+bob,player.pos.z);camera.rotation.set(player.pitch,player.yaw,0);
 }
-
-let last=performance.now();function loop(t){const dt=Math.min(.033,(t-last)/1000);last=t;update(dt);renderer.render(scene,camera);requestAnimationFrame(loop)}requestAnimationFrame(loop);
+function frontline(dt){
+ let pressure=0;for(const s of squads){if(!s.userData.alive)continue;pressure+=(s.userData.team==='ally'?s.position.z<frontlineZ():0?0:0)}
+ const ally=squads.filter(s=>s.userData.team==='ally').reduce((a,s)=>a+(s.position.z<20?1:0),0);
+ const enemy=squads.filter(s=>s.userData.team==='enemy').reduce((a,s)=>a+(s.position.z>-20?1:0),0);
+ const delta=(player.order==='ADVANCE'?.38:-.04)+(ally-enemy)*.008;
+ front=THREE.MathUtils.clamp(front+delta*dt,8,92);document.getElementById('frontFill').style.width=front+'%';
+ const state=front>68?'ADVANCING':front<32?'FALLING BACK':'HOLDING';document.getElementById('frontText').textContent=state;
+ if(Math.random()<dt*.05)log('FRONTLINE',state==='ADVANCING'?'Our men are crossing the next communication trench.':state==='FALLING BACK'?'The forward line is under pressure.':'The sector holds.');
+}
+function frontlineZ(){return (52-front)*1.65}
+function simulateBattle(dt){
+ nextBurst-=dt;if(nextBurst<0){nextBurst=1.2+Math.random()*2.8;const z=frontlineZ()+(Math.random()-.5)*24,x=(Math.random()-.5)*120;burst(x,z,.5+Math.random()*1.3);if(Math.random()<.55)flare(x*.7,z-12)}
+ nextEvent-=dt;if(nextEvent<0){nextEvent=10+Math.random()*14;const msgs=['Runners are moving along the communication trench.','A tank is moving through the smoke ahead.','The rain is making the parapets slick.','Someone whistles from the reserve line.','A flare hangs over the wire.'];log('FIELD REPORT',msgs[Math.floor(Math.random()*msgs.length)])}
+ const danger=Math.max(0,1-Math.abs(player.pos.z-frontlineZ())/26);document.body.classList.toggle('danger',danger>.7);
+ player.morale=THREE.MathUtils.clamp(100-danger*32,54,100);document.getElementById('squadText').textContent=Math.round(8*player.morale/100)+' / 8';document.getElementById('moraleText').textContent=player.morale<70?'MORALE SHAKEN':'MORALE STEADY';
+}
+function animate(t){requestAnimationFrame(animate);const dt=Math.min(.05,(t-(animate.last||t))/1000);animate.last=t;if(!started||paused){renderer.render(scene,camera);return}simTime+=dt;updatePlayer(dt);updateAI(dt);frontline(dt);simulateBattle(dt);
+ for(let i=fx.length-1;i>=0;i--){const f=fx[i];f.t+=dt;const q=f.t/f.d;if(f.m.isMesh){f.m.scale.setScalar(1+q*2.5);f.m.material.opacity=(1-q)*.75}else f.m.intensity=(1-q)*18;if(q>=1){world.remove(f.m);f.m.material?.dispose?.();fx.splice(i,1)}}
+ rainP.rotation.y+=dt*.025;document.getElementById('clock').textContent=new Date(1917,5,18,6,14+Math.floor(simTime/4)).toTimeString().slice(0,5);
+ renderer.render(scene,camera)}
+animate(0);
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
-
-if(screen.orientation?.lock){document.getElementById('rotate').addEventListener('click',()=>screen.orientation.lock('landscape').catch(()=>{}))}
-setTimeout(()=>document.getElementById('loading').classList.add('hidden'),900);
+setTimeout(()=>document.getElementById('loading').style.opacity='0',1300);setTimeout(()=>document.getElementById('loading').remove(),2200);

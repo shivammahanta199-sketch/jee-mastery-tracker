@@ -1,7 +1,35 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><meta name="theme-color" content="#071012"><title>FPV FREERIDE // ACRO WORLD</title><link rel="stylesheet" href="./style.css"></head><body>
-<div id="loading"><div class="loaderTitle">FPV FREERIDE</div><div class="loaderSub">ACRO WORLD · INITIALIZING FLIGHT SYSTEM</div></div>
-<div id="rotate"><strong>ROTATE PHONE</strong><span>Landscape gives the full FPV cockpit view</span><button>ENTER LANDSCAPE</button></div>
-<div id="hud"><div class="brand">FPV<span>//</span>FREERIDE</div><div class="stats"><span>SPEED <b id="speed">0</b> KM/H</span><span>ALT <b id="alt">0</b>M</span><span>BAT <b id="bat">100</b>%</span></div><div class="speedbar"><i id="speedbar"></i></div><div class="mode">ACRO / RATE CONTROL</div><div class="help">W/S PITCH · A/D ROLL · Q/E YAW · SPACE/SHIFT THROTTLE · R RESET · CLICK = MOUSE LOOK</div></div>
-<div id="crash"><strong>CRASH</strong><span>R / RESET TO FLY AGAIN</span></div>
-<div id="mobileControls"><div class="stick" id="leftStick"><div class="knob"></div><label>THROTTLE / YAW</label></div><div class="stick" id="rightStick"><div class="knob"></div><label>PITCH / ROLL</label></div><button id="boost">BOOST</button></div>
-<script type="module" src="./game.js"></script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>THE LINE — Western Front</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="stylesheet" href="./style.css">
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js"}}
+</script>
+</head>
+<body>
+<div id="loading"><div class="loader-title">THE LINE</div><div class="loader-sub">WESTERN FRONT · 1917</div><div class="loader-bar"><i></i></div></div>
+<div id="menu">
+  <div class="menu-kicker">A FRONTLINE FIELD SIMULATION</div>
+  <h1>THE LINE</h1>
+  <p>1917 · A muddy sector somewhere between the trenches.</p>
+  <button id="start">ENTER THE LINE</button>
+  <div class="controls"><span>WASD</span> MOVE · <span>SHIFT</span> RUN · <span>C</span> CROUCH · <span>1/2/3</span> ORDERS · <span>ESC</span> PAUSE</div>
+  <small>Fictional scenario. Non-graphic historical atmosphere.</small>
+</div>
+<div id="hud" class="hidden">
+  <div class="topline"><div><b>SECTOR 7</b><span id="weather">RAIN / LOW VISIBILITY</span></div><div id="clock">06:14</div></div>
+  <div class="objective"><span>FRONTLINE</span><strong id="frontText">HOLDING</strong><div class="frontbar"><i id="frontFill"></i></div><small id="sectorText">YOUR LINE · 3 SECTORS REMAIN</small></div>
+  <div class="orders"><span>ORDERS</span><b id="orderText">HOLD POSITION</b><em id="orderHint">1 ADVANCE · 2 HOLD · 3 FALL BACK</em></div>
+  <div class="squad"><span>SQUAD</span><b id="squadText">8 / 8</b><small id="moraleText">MORALE STEADY</small></div>
+  <div id="eventLog"></div>
+  <div id="crosshair"><i></i><i></i></div>
+  <div id="vignette"></div>
+</div>
+<div id="pause" class="hidden"><h2>THE LINE IS QUIET</h2><p>Press ESC to return.</p></div>
+<script type="module" src="./game.js"></script>
+</body>
+</html>
