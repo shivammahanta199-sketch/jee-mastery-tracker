@@ -1,20 +1,20 @@
 import * as THREE from 'three';
 
 const scene=new THREE.Scene();
-scene.background=new THREE.Color(0x777a75);
-scene.fog=new THREE.FogExp2(0x737671,0.009);
+scene.background=new THREE.Color(0x6f7778);
+scene.fog=new THREE.FogExp2(0x727777,0.0048);
 const camera=new THREE.PerspectiveCamera(72,innerWidth/innerHeight,.05,900);
 camera.rotation.order='YXZ';
 const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
 renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.setSize(innerWidth,innerHeight);renderer.shadowMap.enabled=true;
 document.body.appendChild(renderer.domElement);
 
-const hemi=new THREE.HemisphereLight(0xb8c0bf,0x302c25,1.7);scene.add(hemi);
-const sun=new THREE.DirectionalLight(0xd4d0c1,2.0);sun.position.set(-70,120,30);sun.castShadow=true;scene.add(sun);
+const hemi=new THREE.HemisphereLight(0xd8ddd8,0x343029,2.2);scene.add(hemi);
+const sun=new THREE.DirectionalLight(0xffe8c7,3.1);sun.position.set(-80,150,70);sun.castShadow=true;scene.add(sun);
 
-const world=new THREE.Group();scene.add(world);
+const world=new THREE.Group();scene.add(world); const sky=new THREE.Mesh(new THREE.SphereGeometry(430,32,20),new THREE.MeshBasicMaterial({color:0x70797a,side:THREE.BackSide}));scene.add(sky); for(let i=0;i<24;i++){const cloud=new THREE.Mesh(new THREE.SphereGeometry(10+Math.random()*16,10,6),new THREE.MeshBasicMaterial({color:0x555b5b,transparent:true,opacity:.22,depthWrite:false}));cloud.position.set((Math.random()-.5)*360,45+Math.random()*28,(Math.random()-.5)*360);cloud.scale.y=.18;scene.add(cloud);}
 const mat=(c,r=0)=>new THREE.MeshStandardMaterial({color:c,roughness:r||.92});
-const groundMat=mat(0x4f5048), mudMat=mat(0x3b3932), woodMat=mat(0x4b3a2c), sandMat=mat(0x69665b);
+const groundMat=mat(0x4b4a40), mudMat=mat(0x2f2d28), woodMat=mat(0x5a4030), sandMat=mat(0x6e6958);
 const metalMat=mat(0x353733), clothA=mat(0x4a514a), clothB=mat(0x343b3b);
 
 function box(x,y,z,sx,sy,sz,m,rot=0){const o=new THREE.Mesh(new THREE.BoxGeometry(sx,sy,sz),m);o.position.set(x,y,z);o.rotation.y=rot;o.castShadow=o.receiveShadow=true;world.add(o);return o}
@@ -42,7 +42,7 @@ function barbed(x,z){
 }
 for(let z of [-73,-37,0,37,73])for(let x=-65;x<66;x+=10)barbed(x,z);
 
-const squads=[];let player={pos:new THREE.Vector3(0,1.7,102),vel:new THREE.Vector3(),yaw:Math.PI,pitch:0,crouch:false,order:'HOLD',morale:100};
+const squads=[];let player={pos:new THREE.Vector3(0,1.9,105),vel:new THREE.Vector3(),yaw:0,pitch:-0.04,crouch:false,order:'HOLD',morale:100};
 const ray=new THREE.Raycaster();
 function soldier(team,x,z){
   const g=new THREE.Group();g.position.set(x,-.85,z);g.userData={team,home:new THREE.Vector3(x,-.85,z),state:'hold',phase:Math.random()*6.28,alive:true};
