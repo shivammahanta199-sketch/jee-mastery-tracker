@@ -19,7 +19,7 @@ const sun=new THREE.DirectionalLight(0xffdfad,3.15);sun.position.set(-90,150,75)
 sun.shadow.mapSize.set(mobile?512:1024,mobile?512:1024);sun.shadow.camera.left=-130;sun.shadow.camera.right=130;sun.shadow.camera.top=130;sun.shadow.camera.bottom=-130;scene.add(sun);
 const world=new THREE.Group(),fx=new THREE.Group(),actors=new THREE.Group();scene.add(world,fx,actors);
 
-const G={box:new THREE.BoxGeometry(1,1,1),rock:new THREE.DodecahedronGeometry(1,1),trunk:new THREE.CylinderGeometry(.18,.27,1,7),leaf:new THREE.IcosahedronGeometry(1,1),sphere:new THREE.SphereGeometry(1,10,7),capsule:new THREE.CapsuleGeometry(.32,.85,5,9),ring:new THREE.TorusGeometry(1,.035,5,18)};
+const G={box:new THREE.BoxGeometry(1,1,1),rock:new THREE.DodecahedronGeometry(1,1),trunk:new THREE.CylinderGeometry(.18,.27,1,7),leaf:new THREE.IcosahedronGeometry(1,1),sphere:new THREE.SphereGeometry(1,10,7),capsule:new THREE.CylinderGeometry(.32,.32,1.7,12,4),ring:new THREE.TorusGeometry(1,.035,5,18)};
 const M={
  ground:new THREE.MeshStandardMaterial({color:0x405b42,roughness:1}),rock:new THREE.MeshStandardMaterial({color:0x77786d,roughness:.95}),
  rockDark:new THREE.MeshStandardMaterial({color:0x3d4740,roughness:1}),trunk:new THREE.MeshStandardMaterial({color:0x49382a,roughness:1}),
@@ -37,7 +37,7 @@ function box(parent,p,s,m,ry=0){const o=new THREE.Mesh(G.box,m);o.position.copy(
 const chunkSize=38,chunks=new Map();let lastChunkX=999,lastChunkZ=999;
 function makeChunk(cx,cz){const key=cx+','+cz;if(chunks.has(key))return;const seg=mobile?14:22,geo=new THREE.PlaneGeometry(chunkSize,chunkSize,seg,seg),pos=geo.attributes.position;
 for(let i=0;i<pos.count;i++){const x=pos.getX(i)+cx*chunkSize,z=-pos.getY(i)+cz*chunkSize;pos.setZ(i,height(x,z))}geo.computeVertexNormals();
-const mesh=new THREE.Mesh(geo,M.ground);mesh.rotation.x=-Math.PI/2;mesh.position.set(cx*chunkSize,0,cz*chunkSize);mesh.receiveShadow=true;world.add(mesh);chunks.set(key,mesh)}
+geo.rotateX(-Math.PI/2);const mesh=new THREE.Mesh(geo,M.ground);mesh.position.set(cx*chunkSize,0,cz*chunkSize);mesh.receiveShadow=true;world.add(mesh);chunks.set(key,mesh)}
 function streamTerrain(force=false){const cx=Math.round(player.pos.x/chunkSize),cz=Math.round(player.pos.z/chunkSize);if(!force&&cx===lastChunkX&&cz===lastChunkZ)return;lastChunkX=cx;lastChunkZ=cz;
 for(let x=cx-3;x<=cx+3;x++)for(let z=cz-3;z<=cz+3;z++)makeChunk(x,z);
 for(const [key,m] of chunks){const [x,z]=key.split(',').map(Number);if(Math.abs(x-cx)>4||Math.abs(z-cz)>4){world.remove(m);m.geometry.dispose();chunks.delete(key)}}}
@@ -49,7 +49,8 @@ o.position.set(x,y+5.1*s,z);o.scale.set(2.1*s,2.6*s,2.1*s);o.rotation.y=hash(i+9
 trunks.instanceMatrix.needsUpdate=true;crowns.instanceMatrix.needsUpdate=true;world.add(trunks,crowns)}
 function rocks(){const n=mobile?70:150,im=new THREE.InstancedMesh(G.rock,M.rock,n),o=new THREE.Object3D();
 for(let i=0;i<n;i++){const x=(hash(i*8)-.5)*180,z=(hash(i*12)-.5)*240,y=height(x,z);o.position.set(x,y+.2,z);const s=.3+hash(i*3)*1.8;o.scale.set(s,s*(.55+hash(i)*.8),s);o.rotation.set(hash(i)*3,hash(i+2)*3,hash(i+4)*3);o.updateMatrix();im.setMatrixAt(i,o.matrix)}im.instanceMatrix.needsUpdate=true;world.add(im)}
-const base=new THREE.Mesh(new THREE.PlaneGeometry(420,520),new THREE.MeshStandardMaterial({color:0x304c36,roughness:1}));base.rotation.x=-Math.PI/2;base.position.y=-3.5;base.position.z=45;base.receiveShadow=true;world.add(base);
+const baseGeo=new THREE.PlaneGeometry(420,520,1,1).rotateX(-Math.PI/2);const base=new THREE.Mesh(baseGeo,new THREE.MeshBasicMaterial({color:0x355b3d}));base.position.set(0,-3.5,45);base.receiveShadow=true;world.add(base);
+const landmark=new THREE.Mesh(new THREE.CylinderGeometry(1.2,1.8,7,12),new THREE.MeshStandardMaterial({color:0xb88d45,roughness:.55,metalness:.35}));landmark.position.set(0,3.5,8);landmark.castShadow=!mobile;world.add(landmark);
 for(let i=0;i<9;i++){const m=new THREE.Mesh(new THREE.ConeGeometry(18+hash(i)*14,35+hash(i+4)*30,8),new THREE.MeshStandardMaterial({color:0x354c40,roughness:1}));m.position.set((i-4)*34,10,-105-hash(i)*35);m.scale.x=1.6;m.castShadow=!mobile;world.add(m)}
 forest();rocks();
 
@@ -112,12 +113,12 @@ document.getElementById('attack').onpointerdown=attack;document.getElementById('
 document.getElementById('resume').onclick=togglePause;
 
 let last=0,perf=16,quality=renderer.getPixelRatio(),qualityTimer=0,fpsTimer=0,fpsFrames=0,lastTerrain=0;
-function animate(t){requestAnimationFrame(animate);const dt=Math.min(.045,(t-last||16)/1000);last=t;if(!started||paused){renderer.render(scene,camera);return}
+function animate(t){requestAnimationFrame(animate);try{const dt=Math.min(.045,(t-last||16)/1000);last=t;if(!started||paused){renderer.render(scene,camera);return}
 const begin=performance.now();updatePlayer(dt);streamTerrain();enemyAI(dt);
 shrineOrb.position.y=sy+5.2+Math.sin(t*.0018)*.18;fireflies.rotation.y=t*.00004;
 for(let i=effects.length-1;i>=0;i--){const e=effects[i];e.userData.t+=dt;const q=e.userData.t/e.userData.d;e.scale.setScalar(1+q*3);e.material.opacity=.8*(1-q);if(q>=1){fx.remove(e);e.material.dispose();effects.splice(i,1)}}
 hud();perf=perf*.9+(performance.now()-begin)*.1;qualityTimer-=dt;if(qualityTimer<0){qualityTimer=1.5;const target=mobile?15:13;if(perf>target+4)quality=Math.max(.68,quality-.06);else if(perf<target-3)quality=Math.min(Math.min(devicePixelRatio,mobile?1:1.3),quality+.03);renderer.setPixelRatio(quality)}
-fpsFrames++;fpsTimer+=dt;if(fpsTimer>.5){document.getElementById('fps').textContent=Math.round(fpsFrames/fpsTimer);fpsFrames=0;fpsTimer=0}renderer.render(scene,camera)}
+fpsFrames++;fpsTimer+=dt;if(fpsTimer>.5){document.getElementById('fps').textContent=Math.round(fpsFrames/fpsTimer);fpsFrames=0;fpsTimer=0}renderer.render(scene,camera)}catch(err){console.error(err);showStartupError(err);paused=true;document.getElementById('pause').classList.remove('hidden')}}
 streamTerrain(true);camera.position.set(0,9,34);camera.lookAt(0,2,8);started=true;animate(0);
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
 
@@ -125,3 +126,4 @@ addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updat
  console.error(err); showStartupError(err);
 }
 })();
+addEventListener('error',e=>{console.error(e.error||e.message);showStartupError(e.error||e.message)});
