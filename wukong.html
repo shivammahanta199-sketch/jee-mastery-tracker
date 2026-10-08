@@ -29,5 +29,23 @@
   <button id="pauseBtn">Ⅱ</button>
 </div>
 <div id="pause" class="hidden"><h1>PAUSED</h1><p>The mountain is patient. Your frame rate is less so.</p><button id="resume">RETURN TO VALLEY</button></div>
-<script type="module" src="./wukong.js"></script>
+<div id="startupError" hidden style="position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:50;max-width:min(520px,90vw);padding:20px 22px;background:#0b120fcc;border:1px solid #9b875a;color:#eef2df;text-align:center;font:14px system-ui;box-shadow:0 14px 50px #0009"><b style="display:block;font:700 22px Georgia,serif;letter-spacing:.08em">GAME STARTUP FAILED</b><span style="display:block;margin-top:10px;color:#f0b5a5"></span></div>
+<script>
+(function(){
+ const sources=[
+  'https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.min.js',
+  'https://unpkg.com/three@0.186.1/build/three.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/three.js/r186/three.min.js'
+ ];
+ function fail(msg){const b=document.getElementById('startupError');b.hidden=false;b.querySelector('span').textContent=msg;}
+ function load(i){
+  if(i>=sources.length){fail('Three.js could not be loaded. Check your browser connection and reload once.');return;}
+  const s=document.createElement('script');s.src=sources[i];s.onload=()=>loadGame();s.onerror=()=>load(i+1);document.head.appendChild(s);
+ }
+ function loadGame(){
+  const s=document.createElement('script');s.src='./wukong.js';s.onerror=()=>fail('wukong.js could not be loaded.');document.body.appendChild(s);
+ }
+ load(0);
+})();
+</script>
 </body></html>
