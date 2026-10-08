@@ -1,31 +1,23 @@
-# THE LINE — Western Front
+# JEE Mastery
 
-A browser-based, non-graphic WWI frontline atmosphere prototype built for the JEE Mastery repo.
+A premium, mobile-first JEE preparation command center built as a static web app.
 
-## Design direction
+## What is included
+- Mission-control dashboard with daily tasks and subject health
+- Weekly study-plan view
+- Focus timer with 25 / 50 / 90 minute sessions
+- Persistent local progress, streaks and activity heatmap
+- Mathematics, Physics and Chemistry mastery cards
+- Mock-test logging with score, percentile, average and trend
+- Analytics for weekly focus, accuracy and milestones
+- Light/dark theme and mobile navigation
+- No backend or API keys required; progress is stored locally in the browser
 
-The experience draws on documented WWI game conventions such as sector-based trench frontlines, squad AI, large muddy maps, historical atmosphere, suppression/morale pressure, and tanks. The film **All Quiet on the Western Front (2022)** was used only as high-level visual/cinematic inspiration: desaturated weather, mud, smoke, scale, long battlefield sightlines, and the contrast between stillness and sudden chaos.
+## Design
+The UI uses a dark aerospace-inspired study aesthetic, restrained motion, responsive cards, high-contrast typography and lightweight CSS animations. It is designed to feel like a serious personal command center rather than a generic study template.
 
-No film footage, artwork, dialogue, soundtrack, or other copyrighted assets are included.
+## Deployment
+The project is intentionally dependency-free: open `index.html` directly or deploy the repository to Vercel as a static site.
 
-## Controls
-
-- WASD: move
-- Shift: run
-- C: crouch
-- 1: advance
-- 2: hold
-- 3: fall back
-- Mouse: look
-- Esc: pause
-
-## Technical
-
-- Static Vercel deployment
-- Three.js loaded from jsDelivr
-- Procedural terrain, trenches, craters, wire, soldiers, tanks, fog, rain and battlefield effects
-- No backend, account, API key, or build step
-
-## Scope
-
-This is intentionally a historical atmosphere/squad-frontline prototype rather than a graphic combat simulator.
+## Note
+The repository previously contained an unrelated Three.js game prototype. The current main branch replaces that experience with the JEE Mastery product.
