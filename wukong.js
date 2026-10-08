@@ -3,7 +3,7 @@ import * as THREE from 'three';
 const mobile=matchMedia('(max-width:900px)').matches;
 const scene=new THREE.Scene();
 scene.background=new THREE.Color(0x82988a);
-scene.fog=new THREE.FogExp2(0x708477,mobile?.010:.0056);
+scene.fog=new THREE.FogExp2(0x708477,mobile ? .010 : .0056);
 const camera=new THREE.PerspectiveCamera(58,innerWidth/innerHeight,.05,700);
 const renderer=new THREE.WebGLRenderer({antialias:!mobile,powerPreference:'high-performance',stencil:false,depth:true});
 renderer.setPixelRatio(Math.min(devicePixelRatio,mobile?1:1.3));renderer.setSize(innerWidth,innerHeight);
