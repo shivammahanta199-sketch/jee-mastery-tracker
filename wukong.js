@@ -1,129 +1,91 @@
-(function(){
-const showStartupError=(err)=>{
- const box=document.getElementById('startupError');
- if(box){box.hidden=false;box.querySelector('b').textContent='GAME STARTUP FAILED';box.querySelector('span').textContent=String(err&&err.message||err||'Unknown startup error');}
+(()=>{
+"use strict";
+const KEY="jee-mastery-v3";
+const subjects=[
+ {id:"math",name:"Mathematics",icon:"∑",color:"math",chapters:[["Sets & Relations",72],["Quadratic Equations",61],["Limits & Continuity",48],["Matrices",82],["Probability",39]]},
+ {id:"physics",name:"Physics",icon:"ϕ",color:"physics",chapters:[["Units & Dimensions",88],["Kinematics",74],["NLM & Friction",53],["Electrostatics",46],["Modern Physics",67]]},
+ {id:"chemistry",name:"Chemistry",icon:"⚗",color:"chemistry",chapters:[["Mole Concept",79],["Chemical Bonding",63],["Thermodynamics",52],["Organic Basics",44],["Coordination",71]]}
+];
+const quotes=["The secret is not motivation. It is showing up when motivation is gone.","A difficult chapter today is a confident question tomorrow.","Your rank is built in the hours nobody sees.","Do fewer things. Do them deeply. Then repeat tomorrow.","Consistency beats intensity when the syllabus is this big.","Don't chase the feeling of progress. Chase completed work."];
+const defaultTasks=[
+ {id:"t1",name:"Mathematics — Limits & Continuity",meta:"Concepts + 25 PYQs",tag:"90 min",done:false},
+ {id:"t2",name:"Physics — Electrostatics",meta:"Revise formulas + timed set",tag:"60 min",done:false},
+ {id:"t3",name:"Chemistry — Organic Basics",meta:"Reaction map + 20 MCQs",tag:"50 min",done:false},
+ {id:"t4",name:"Error log review",meta:"Revisit yesterday's mistakes",tag:"30 min",done:false}
+];
+let state=JSON.parse(localStorage.getItem(KEY)||"null")||{
+ name:"Mahanta",target:6,tasks:defaultTasks,focusByDay:{},streak:0,lastActive:null,
+ questions:0,correct:0,tests:[],theme:"dark",quote:0
 };
-try{
-const mobile=matchMedia('(max-width:900px)').matches;
-const scene=new THREE.Scene();
-scene.background=new THREE.Color(0x82988a);
-scene.fog=new THREE.FogExp2(0x708477,mobile ? .0045 : .0028);
-const camera=new THREE.PerspectiveCamera(58,innerWidth/innerHeight,.05,700);
-const renderer=new THREE.WebGLRenderer({antialias:!mobile,powerPreference:'high-performance',stencil:false,depth:true});
-renderer.setPixelRatio(Math.min(devicePixelRatio,mobile?1:1.3));renderer.setSize(innerWidth,innerHeight);
-renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.05;
-renderer.shadowMap.enabled=!mobile;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.shadowMap.autoUpdate=true;document.body.appendChild(renderer.domElement);
-
-const hemi=new THREE.HemisphereLight(0xdbe8d7,0x203329,2.15);scene.add(hemi);
-const sun=new THREE.DirectionalLight(0xffdfad,3.15);sun.position.set(-90,150,75);sun.castShadow=!mobile;
-sun.shadow.mapSize.set(mobile?512:1024,mobile?512:1024);sun.shadow.camera.left=-130;sun.shadow.camera.right=130;sun.shadow.camera.top=130;sun.shadow.camera.bottom=-130;scene.add(sun);
-const world=new THREE.Group(),fx=new THREE.Group(),actors=new THREE.Group();scene.add(world,fx,actors);
-
-const G={box:new THREE.BoxGeometry(1,1,1),rock:new THREE.DodecahedronGeometry(1,1),trunk:new THREE.CylinderGeometry(.18,.27,1,7),leaf:new THREE.IcosahedronGeometry(1,1),sphere:new THREE.SphereGeometry(1,10,7),capsule:new THREE.CylinderGeometry(.32,.32,1.7,12,4),ring:new THREE.TorusGeometry(1,.035,5,18)};
-const M={
- ground:new THREE.MeshStandardMaterial({color:0x405b42,roughness:1}),rock:new THREE.MeshStandardMaterial({color:0x77786d,roughness:.95}),
- rockDark:new THREE.MeshStandardMaterial({color:0x3d4740,roughness:1}),trunk:new THREE.MeshStandardMaterial({color:0x49382a,roughness:1}),
- leaf:new THREE.MeshStandardMaterial({color:0x274b32,roughness:.96}),leaf2:new THREE.MeshStandardMaterial({color:0x456d46,roughness:.9}),
- cloth:new THREE.MeshStandardMaterial({color:0x6e4834,roughness:.92}),skin:new THREE.MeshStandardMaterial({color:0x8b684e,roughness:1}),
- gold:new THREE.MeshStandardMaterial({color:0xc7a354,roughness:.42,metalness:.65}),water:new THREE.MeshPhysicalMaterial({color:0x326c71,roughness:.08,metalness:.05,transparent:true,opacity:.72}),
- shrine:new THREE.MeshStandardMaterial({color:0x74604b,roughness:.78}),glow:new THREE.MeshBasicMaterial({color:0xd9bf71,transparent:true,opacity:.8})
-};
-const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));const hash=n=>{const x=Math.sin(n*127.1)*43758.5453;return x-Math.floor(x)};
-const noise=(x,z)=>Math.sin(x*.035)+Math.sin(z*.047)*.7+Math.sin((x+z)*.019)*.55+Math.sin((x-z)*.071)*.2;
-function height(x,z){const valley=Math.max(0,1-Math.abs(x)/82);const hills=noise(x,z)*2.4+Math.sin(x*.012)*4.5+Math.cos(z*.017)*3.5;const ridge=Math.max(0,(Math.abs(x)-42)*.08)**2;return hills+ridge-2.2*valley}
-function matMesh(parent,g,m,p,s=1){const o=new THREE.Mesh(g,m);o.position.copy(p);o.scale.setScalar(s);o.castShadow=!mobile;o.receiveShadow=true;parent.add(o);return o}
-function box(parent,p,s,m,ry=0){const o=new THREE.Mesh(G.box,m);o.position.copy(p);o.scale.copy(s);o.rotation.y=ry;o.castShadow=!mobile;o.receiveShadow=true;parent.add(o);return o}
-
-const chunkSize=38,chunks=new Map();let lastChunkX=999,lastChunkZ=999;
-function makeChunk(cx,cz){const key=cx+','+cz;if(chunks.has(key))return;const seg=mobile?14:22,geo=new THREE.PlaneGeometry(chunkSize,chunkSize,seg,seg),pos=geo.attributes.position;
-for(let i=0;i<pos.count;i++){const x=pos.getX(i)+cx*chunkSize,z=-pos.getY(i)+cz*chunkSize;pos.setZ(i,height(x,z))}geo.computeVertexNormals();
-geo.rotateX(-Math.PI/2);const mesh=new THREE.Mesh(geo,M.ground);mesh.position.set(cx*chunkSize,0,cz*chunkSize);mesh.receiveShadow=true;world.add(mesh);chunks.set(key,mesh)}
-function streamTerrain(force=false){const cx=Math.round(player.pos.x/chunkSize),cz=Math.round(player.pos.z/chunkSize);if(!force&&cx===lastChunkX&&cz===lastChunkZ)return;lastChunkX=cx;lastChunkZ=cz;
-for(let x=cx-3;x<=cx+3;x++)for(let z=cz-3;z<=cz+3;z++)makeChunk(x,z);
-for(const [key,m] of chunks){const [x,z]=key.split(',').map(Number);if(Math.abs(x-cx)>4||Math.abs(z-cz)>4){world.remove(m);m.geometry.dispose();chunks.delete(key)}}}
-
-function forest(){const count=mobile?120:300,trunks=new THREE.InstancedMesh(G.trunk,M.trunk,count),crowns=new THREE.InstancedMesh(G.leaf,M.leaf,count),o=new THREE.Object3D();
-for(let i=0;i<count;i++){const x=(hash(i*2.17)-.5)*190,z=(hash(i*4.71)-.5)*250;if(Math.abs(x)<7&&Math.abs(z)<22){i--;continue}const y=height(x,z),s=.62+hash(i*5.4)*1.22;
-o.position.set(x,y+1.9*s,z);o.scale.set(.7*s,3.8*s,.7*s);o.rotation.y=hash(i)*6.28;o.updateMatrix();trunks.setMatrixAt(i,o.matrix);
-o.position.set(x,y+5.1*s,z);o.scale.set(2.1*s,2.6*s,2.1*s);o.rotation.y=hash(i+9)*6.28;o.updateMatrix();crowns.setMatrixAt(i,o.matrix)}
-trunks.instanceMatrix.needsUpdate=true;crowns.instanceMatrix.needsUpdate=true;world.add(trunks,crowns)}
-function rocks(){const n=mobile?70:150,im=new THREE.InstancedMesh(G.rock,M.rock,n),o=new THREE.Object3D();
-for(let i=0;i<n;i++){const x=(hash(i*8)-.5)*180,z=(hash(i*12)-.5)*240,y=height(x,z);o.position.set(x,y+.2,z);const s=.3+hash(i*3)*1.8;o.scale.set(s,s*(.55+hash(i)*.8),s);o.rotation.set(hash(i)*3,hash(i+2)*3,hash(i+4)*3);o.updateMatrix();im.setMatrixAt(i,o.matrix)}im.instanceMatrix.needsUpdate=true;world.add(im)}
-const baseGeo=new THREE.PlaneGeometry(420,520,1,1).rotateX(-Math.PI/2);const base=new THREE.Mesh(baseGeo,new THREE.MeshBasicMaterial({color:0x355b3d}));base.position.set(0,-3.5,45);base.receiveShadow=true;world.add(base);
-const landmark=new THREE.Mesh(new THREE.CylinderGeometry(1.2,1.8,7,12),new THREE.MeshStandardMaterial({color:0xb88d45,roughness:.55,metalness:.35}));landmark.position.set(0,3.5,8);landmark.castShadow=!mobile;world.add(landmark);
-for(let i=0;i<9;i++){const m=new THREE.Mesh(new THREE.ConeGeometry(18+hash(i)*14,35+hash(i+4)*30,8),new THREE.MeshStandardMaterial({color:0x354c40,roughness:1}));m.position.set((i-4)*34,10,-105-hash(i)*35);m.scale.x=1.6;m.castShadow=!mobile;world.add(m)}
-forest();rocks();
-
-const river=new THREE.Mesh(new THREE.PlaneGeometry(42,240),M.water);river.rotation.x=-Math.PI/2;river.position.set(0,-.1,45);world.add(river);
-for(let i=-4;i<=4;i++)box(world,new THREE.Vector3(i*4.1,height(i*4.1,0)+.4,0),new THREE.Vector3(3.5,.7,7),M.rockDark,hash(i)*.2);
-const shrine=new THREE.Group(),sy=height(0,-48);box(shrine,new THREE.Vector3(0,sy+1.2,-48),new THREE.Vector3(7,2.4,5),M.shrine);box(shrine,new THREE.Vector3(0,sy+4,-48),new THREE.Vector3(9,.5,6),M.gold);
-box(shrine,new THREE.Vector3(-2.8,sy+3,-48),new THREE.Vector3(.4,4,.4),M.gold);box(shrine,new THREE.Vector3(2.8,sy+3,-48),new THREE.Vector3(.4,4,.4),M.gold);
-const shrineOrb=matMesh(shrine,G.sphere,M.glow,new THREE.Vector3(0,5.2,-48),.55);world.add(shrine);
-
-const fireflies=new THREE.InstancedMesh(G.sphere,new THREE.MeshBasicMaterial({color:0xd9d47b,transparent:true,opacity:.65}),mobile?45:90),fo=new THREE.Object3D();
-for(let i=0;i<fireflies.count;i++){const x=(hash(i*17)-.5)*130,z=(hash(i*31)-.5)*180;fo.position.set(x,height(x,z)+2+hash(i)*4,z);fo.scale.setScalar(.035+hash(i)*.035);fo.updateMatrix();fireflies.setMatrixAt(i,fo.matrix)}fireflies.instanceMatrix.needsUpdate=true;world.add(fireflies);
-
-const player={pos:new THREE.Vector3(0,height(0,22)+.2,22),vel:new THREE.Vector3(),yaw:Math.PI,pitch:-.08,hp:100,stamina:100,orb:0,grounded:true,guard:false,sprint:false,attack:0,attackCD:0,inv:0};
-const keys={},mobileInput={x:0,y:0,look:false,lx:0,ly:0};const avatar=new THREE.Group();actors.add(avatar);
-function buildPlayer(){matMesh(avatar,G.capsule,M.cloth,new THREE.Vector3(0,.95,0),1);matMesh(avatar,G.sphere,M.skin,new THREE.Vector3(0,1.72,0),.38);const staff=box(avatar,new THREE.Vector3(.45,.95,-.35),new THREE.Vector3(.08,2.4,.08),M.gold,.35);avatar.userData={staff}}
-buildPlayer();
-
-const enemies=[];
-function enemy(x,z){const g=new THREE.Group();g.position.set(x,height(x,z)+.1,z);matMesh(g,G.capsule,M.rockDark,new THREE.Vector3(0,.8,0),.95);matMesh(g,G.sphere,M.gold,new THREE.Vector3(0,1.55,.28),.16);
-g.userData={hp:120,max:120,cd:1+hash(x+z),phase:hash(x)*6.28,home:new THREE.Vector3(x,0,z),alive:true};actors.add(g);enemies.push(g)}
-enemy(-11,-23);enemy(15,-36);enemy(-18,-66);enemy(20,-82);
-const boss=new THREE.Group();boss.position.set(0,height(0,-108),-108);matMesh(boss,G.capsule,M.rockDark,new THREE.Vector3(0,2,0),2.6);matMesh(boss,G.sphere,M.gold,new THREE.Vector3(-.7,3.5,.9),.22);matMesh(boss,G.sphere,M.gold,new THREE.Vector3(.7,3.5,.9),.22);boss.userData={hp:900,max:900,cd:2,alive:true,phase:0};actors.add(boss);
-
-const effects=[];
-function burst(p,scale=.7){const m=matMesh(fx,G.sphere,new THREE.MeshBasicMaterial({color:0xd5b665,transparent:true,opacity:.8}),p,scale);m.userData.t=0;m.userData.d=.38;effects.push(m)}
-function damageEnemy(e,d){if(!e.userData.alive)return;e.userData.hp-=d;e.userData.flash=.08;burst(e.position,.35);if(e.userData.hp<=0){e.userData.alive=false;e.visible=false;player.orb+=1;message('Spirit orb recovered.');if(e===boss){document.getElementById('objective').textContent='RETURN TO THE SHRINE';document.getElementById('objectiveHint').textContent='The valley is quiet again.'}}}
-function attack(){if(paused||player.attackCD>0||player.stamina<10)return;player.attack=.3;player.attackCD=.42;player.stamina-=10;burst(player.pos.clone().add(new THREE.Vector3(0,1,0)),.25);
-for(const e of [...enemies,boss])if(e.userData.alive&&e.position.distanceTo(player.pos)<4.8)damageEnemy(e,e===boss?65:90)}
-function playerDamage(d){if(player.inv>0||player.guard)return;player.hp=clamp(player.hp-d,0,100);player.inv=.35;if(player.hp<=0){player.hp=100;player.pos.set(0,height(0,22)+.2,22);message('The shrine restores your spirit.');}}
-function enemyAI(dt){for(const e of enemies){const u=e.userData;if(!u.alive)continue;u.cd-=dt;u.phase+=dt;const dx=player.pos.x-e.position.x,dz=player.pos.z-e.position.z,dist=Math.hypot(dx,dz);
-if(dist<18){if(dist>2.5){e.position.x+=dx/dist*dt*1.2;e.position.z+=dz/dist*dt*1.2}else if(u.cd<=0){u.cd=1.3;playerDamage(8);burst(player.pos,.35)}}else{e.position.x=u.home.x+Math.sin(u.phase)*1.5;e.position.z=u.home.z+Math.cos(u.phase)*1.5}e.position.y=height(e.position.x,e.position.z)+.1;e.lookAt(player.pos.x,e.position.y,player.pos.z)}
-const u=boss.userData;if(u.alive){u.cd-=dt;u.phase+=dt;const dx=player.pos.x-boss.position.x,dz=player.pos.z-boss.position.z,dist=Math.hypot(dx,dz);if(dist>4.5){boss.position.x+=dx/dist*dt*1.5;boss.position.z+=dz/dist*dt*1.5}else if(u.cd<=0){u.cd=1.1;playerDamage(14);burst(player.pos,.6)}boss.position.y=height(boss.position.x,boss.position.z)+.1;boss.lookAt(player.pos.x,boss.position.y,player.pos.z)}}
-
-function updatePlayer(dt){const moving=keys.KeyW||keys.KeyS||keys.KeyA||keys.KeyD||mobileInput.x||mobileInput.y;const sprint=(keys.ShiftLeft||keys.ShiftRight||player.sprint)&&moving&&player.stamina>0&&!player.guard;const speed=sprint?8.2:4.7;
-const f=new THREE.Vector3(-Math.sin(player.yaw),0,-Math.cos(player.yaw)),r=new THREE.Vector3(Math.cos(player.yaw),0,-Math.sin(player.yaw)),d=new THREE.Vector3();if(keys.KeyW)d.add(f);if(keys.KeyS)d.sub(f);if(keys.KeyD)d.add(r);if(keys.KeyA)d.sub(r);d.addScaledVector(r,mobileInput.x).addScaledVector(f,-mobileInput.y);if(d.lengthSq())d.normalize();
-const accel=1-Math.exp(-dt*12);player.vel.x=THREE.MathUtils.lerp(player.vel.x,d.x*speed,accel);player.vel.z=THREE.MathUtils.lerp(player.vel.z,d.z*speed,accel);player.vel.y-=20*dt;
-const nextX=player.pos.x+player.vel.x*dt,nextZ=player.pos.z+player.vel.z*dt,ground=height(nextX,nextZ)+.15;if(player.pos.y<=ground&&player.vel.y<=0){player.pos.y=ground;player.vel.y=0;player.grounded=true}else player.grounded=false;
-player.pos.x=nextX;player.pos.z=nextZ;player.pos.y+=player.vel.y*dt;if((keys.Space||mobileInput.jump)&&player.grounded){player.vel.y=8.2;player.grounded=false;mobileInput.jump=false}
-player.stamina=clamp(player.stamina+(sprint?-30:18)*dt,0,100);player.attackCD=Math.max(0,player.attackCD-dt);player.attack=Math.max(0,player.attack-dt);player.inv=Math.max(0,player.inv-dt);
-avatar.position.copy(player.pos);avatar.rotation.y=player.yaw;avatar.userData.staff.rotation.z=player.attack>0?Math.sin((.3-player.attack)*28)*1.3:.2;
-camera.fov=THREE.MathUtils.lerp(camera.fov,player.guard?52:58,dt*8);camera.updateProjectionMatrix();
-const camBack=new THREE.Vector3(Math.sin(player.yaw)*5.8,3.0,Math.cos(player.yaw)*5.8),desired=player.pos.clone().add(camBack);desired.y=Math.max(desired.y,height(desired.x,desired.z)+1.0);camera.position.lerp(desired,1-Math.exp(-dt*8));camera.lookAt(player.pos.x,player.pos.y+1.15,player.pos.z)}
-
-let paused=false,started=false;
-function message(s){const m=document.getElementById('message');m.textContent=s;m.style.opacity=1;clearTimeout(message.t);message.t=setTimeout(()=>m.style.opacity=0,2200)}
-function hud(){document.getElementById('hp').textContent=Math.round(player.hp);document.getElementById('stamina').textContent=Math.round(player.stamina);document.getElementById('orb').textContent=player.orb;document.getElementById('hpBar').style.width=player.hp+'%';document.getElementById('staminaBar').style.width=player.stamina+'%';
-const b=document.getElementById('boss');b.classList.toggle('hidden',boss.userData.hp>=boss.userData.max||!boss.userData.alive);if(!b.classList.contains('hidden'))b.querySelector('em').style.width=(boss.userData.hp/boss.userData.max*100)+'%'}
-function interact(){const d=player.pos.distanceTo(new THREE.Vector3(0,sy+5.2,-48));message(d<12?'The shrine fills you with calm. The Stone Warden waits beyond the valley.':'Nothing here responds. The mountain remains stubbornly beautiful.')}
-function togglePause(){if(!started)return;paused=!paused;document.getElementById('pause').classList.toggle('hidden',!paused)}
-addEventListener('keydown',e=>{keys[e.code]=true;if(e.code==='KeyE')interact();if(e.code==='Escape')togglePause()});addEventListener('keyup',e=>keys[e.code]=false);
-addEventListener('mousedown',e=>{if(e.button===0)attack();if(e.button===2)player.guard=true});addEventListener('mouseup',e=>{if(e.button===2)player.guard=false});addEventListener('contextmenu',e=>e.preventDefault());
-
-if(mobile){const stick=document.getElementById('stick'),knob=stick.querySelector('i'),look=document.getElementById('look');
-const set=e=>{const r=stick.getBoundingClientRect();let x=e.clientX-r.left-r.width/2,y=e.clientY-r.top-r.height/2,l=Math.hypot(x,y);if(l>43){x=x/l*43;y=y/l*43}mobileInput.x=x/43;mobileInput.y=y/43;knob.style.transform='translate('+x+'px,'+y+'px)'};
-stick.addEventListener('pointerdown',e=>{stick.setPointerCapture(e.pointerId);set(e)});stick.addEventListener('pointermove',set);const end=()=>{mobileInput.x=mobileInput.y=0;knob.style.transform='translate(0,0)'};stick.addEventListener('pointerup',end);stick.addEventListener('pointercancel',end);
-look.addEventListener('pointerdown',e=>{mobileInput.look=true;mobileInput.lx=e.clientX;mobileInput.ly=e.clientY;look.setPointerCapture(e.pointerId)});
-look.addEventListener('pointermove',e=>{if(!mobileInput.look)return;player.yaw-=(e.clientX-mobileInput.lx)*.006;player.pitch=clamp(player.pitch-(e.clientY-mobileInput.ly)*.004,-1,.6);mobileInput.lx=e.clientX;mobileInput.ly=e.clientY});
-look.addEventListener('pointerup',()=>mobileInput.look=false);look.addEventListener('pointercancel',()=>mobileInput.look=false);
-document.getElementById('attack').onpointerdown=attack;document.getElementById('jump').onpointerdown=()=>mobileInput.jump=true;document.getElementById('guard').onpointerdown=()=>player.guard=true;document.getElementById('guard').onpointerup=()=>player.guard=false;document.getElementById('guard').onpointercancel=()=>player.guard=false;document.getElementById('sprint').onpointerdown=()=>player.sprint=true;document.getElementById('sprint').onpointerup=()=>player.sprint=false;document.getElementById('sprint').onpointercancel=()=>player.sprint=false;document.getElementById('interact').onpointerdown=interact;document.getElementById('pauseBtn').onpointerdown=togglePause;document.getElementById('mobile').classList.remove('hidden')}
-document.getElementById('resume').onclick=togglePause;
-
-let last=0,perf=16,quality=renderer.getPixelRatio(),qualityTimer=0,fpsTimer=0,fpsFrames=0,lastTerrain=0;
-function animate(t){requestAnimationFrame(animate);try{const dt=Math.min(.045,(t-last||16)/1000);last=t;if(!started||paused){renderer.render(scene,camera);return}
-const begin=performance.now();updatePlayer(dt);streamTerrain();enemyAI(dt);
-shrineOrb.position.y=sy+5.2+Math.sin(t*.0018)*.18;fireflies.rotation.y=t*.00004;
-for(let i=effects.length-1;i>=0;i--){const e=effects[i];e.userData.t+=dt;const q=e.userData.t/e.userData.d;e.scale.setScalar(1+q*3);e.material.opacity=.8*(1-q);if(q>=1){fx.remove(e);e.material.dispose();effects.splice(i,1)}}
-hud();perf=perf*.9+(performance.now()-begin)*.1;qualityTimer-=dt;if(qualityTimer<0){qualityTimer=1.5;const target=mobile?15:13;if(perf>target+4)quality=Math.max(.68,quality-.06);else if(perf<target-3)quality=Math.min(Math.min(devicePixelRatio,mobile?1:1.3),quality+.03);renderer.setPixelRatio(quality)}
-fpsFrames++;fpsTimer+=dt;if(fpsTimer>.5){document.getElementById('fps').textContent=Math.round(fpsFrames/fpsTimer);fpsFrames=0;fpsTimer=0}renderer.render(scene,camera)}catch(err){console.error(err);showStartupError(err);paused=true;document.getElementById('pause').classList.remove('hidden')}}
-streamTerrain(true);camera.position.set(0,9,34);camera.lookAt(0,2,8);started=true;animate(0);
-addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
-
-}catch(err){
- console.error(err); showStartupError(err);
+function save(){localStorage.setItem(KEY,JSON.stringify(state))}
+function today(){return new Date().toISOString().slice(0,10)}
+function fmtDate(d){return d.toLocaleDateString("en-IN",{day:"numeric",month:"short"})}
+function toast(s){const e=$("#toast");e.textContent=s;e.classList.add("show");clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove("show"),2200)}
+function $(s){return document.querySelector(s)}
+function $$(s){return [...document.querySelectorAll(s)]}
+function esc(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
+function activeView(name){$$(".view").forEach(v=>v.classList.toggle("active",v.id==="view-"+name));$$(".nav-item").forEach(b=>b.classList.toggle("active",b.dataset.view===name));const meta={dashboard:["OVERVIEW","Dashboard"],study:["EXECUTION","Study Plan"],subjects:["SYLLABUS","Subject Lab"],tests:["PERFORMANCE","Mock Tests"],analytics:["INTELLIGENCE","Analytics"],settings:["CONTROL","Settings"]}[name]||["",""];$("#pageKicker").textContent=meta[0];$("#pageTitle").textContent=meta[1];window.scrollTo({top:0,behavior:"smooth"});if(innerWidth<761)$("#app .sidebar").classList.remove("open");render()}
+$$("[data-view]").forEach(b=>b.addEventListener("click",()=>activeView(b.dataset.view)));
+$("#menuBtn").onclick=()=>$("#app .sidebar").classList.toggle("open");
+function focusDay(){const d=today();state.focusByDay[d]=(state.focusByDay[d]||0)+0;save();activeView("study");toast("Focus engine ready.")}
+function markActive(){const d=today(),last=state.lastActive;if(last!==d){if(last){const prev=new Date(last),now=new Date(d);const diff=Math.round((now-prev)/86400000);state.streak=diff===1?state.streak+1:1}else state.streak=1;state.lastActive=d;save()}}
+function totalFocus(){return Object.values(state.focusByDay).reduce((a,b)=>a+b,0)}
+function focusText(min){return Math.floor(min/60)+"h "+(min%60)+"m"}
+function taskDoneCount(){return state.tasks.filter(x=>x.done).length}
+function mastery(){const vals=subjects.flatMap(s=>s.chapters.map(c=>c[1]));return Math.round(vals.reduce((a,b)=>a+b,0)/vals.length)}
+function renderDashboard(){
+ $("#todayDate").textContent=fmtDate(new Date());$("#sideStreak").textContent=state.streak+" day streak";$("#streakStat").textContent=state.streak;
+ $("#focusStat").textContent=focusText(totalFocus());$("#focusDelta").textContent=state.target+"h daily target";
+ $("#questionStat").textContent=state.questions;$("#accuracyStat").textContent=state.questions?Math.round(state.correct/state.questions*100)+"% accuracy":"No attempts yet";
+ const avg=state.tests.length?Math.round(state.tests.reduce((a,t)=>a+t.score,0)/state.tests.length):null;$("#mockStat").textContent=avg===null?"—":avg+"%";$("#mockDelta").textContent=state.tests.length?(state.tests.length+" test"+(state.tests.length>1?"s":"")+" logged"):"Add your first test";
+ $("#heroPercent").textContent=mastery()+"%";
+ $("#taskList").innerHTML=state.tasks.length?state.tasks.map(t=>`<div class="task ${t.done?"done":""}"><button class="check" data-task="${t.id}">✓</button><div><div class="task-name">${esc(t.name)}</div><div class="task-meta">${esc(t.meta)}</div></div><span class="task-tag">${esc(t.tag)}</span></div>`).join(""):'<div class="empty">No missions today.</div>';
+ $$("#taskList .check").forEach(b=>b.onclick=()=>{const t=state.tasks.find(x=>x.id===b.dataset.task);t.done=!t.done;if(t.done)markActive();save();render()});
+ $("#subjectBars").innerHTML=subjects.map(s=>{const p=Math.round(s.chapters.reduce((a,c)=>a+c[1],0)/s.chapters.length);return `<div class="subject-row"><div class="subject-line"><span>${s.name}</span><span>${p}%</span></div><div class="progress-track"><div class="progress-fill ${s.color}" style="width:${p}%"></div></div></div>`}).join("");
+ const cells=[];for(let i=0;i<90;i++){const d=new Date();d.setDate(d.getDate()-(89-i));const k=d.toISOString().slice(0,10),v=state.focusByDay[k]||0;cells.push(`<i class="heat-cell ${v>=90?"l4":v>=50?"l3":v>=25?"l2":v>0?"l1":""}" title="${k}: ${v}m"></i>`)}$("#heatmap").innerHTML=cells.join("");
+ $("#quoteText").textContent=quotes[state.quote%quotes.length];
 }
+function renderStudy(){
+ const now=new Date(),start=new Date(now);start.setDate(now.getDate()-((now.getDay()+6)%7));
+ $("#weekStrip").innerHTML=Array.from({length:7},(_,i)=>{const d=new Date(start);d.setDate(start.getDate()+i);const k=d.toISOString().slice(0,10);return `<button class="day-card ${k===today()?"active":""}" data-day="${k}"><b>${d.toLocaleDateString("en",{weekday:"short"}).toUpperCase()}</b><small>${d.getDate()}</small><span>${(state.focusByDay[k]||0)>=60?"●":"○"}</span></button>`}).join("");
+ $$("#weekStrip .day-card").forEach(b=>b.onclick=()=>toast(b.dataset.day===today()?"Today selected":"Planning view is ready for this day"));
+ $("#scheduleList").innerHTML=state.tasks.map((t,i)=>`<div class="schedule-row"><div class="time">${["07:00","10:00","15:00","20:30"][i]||"—"}</div><div><b>${esc(t.name)}</b><small>${esc(t.meta)}</small></div><span class="schedule-status ${t.done?"done":""}">${t.done?"COMPLETED":"PLANNED"}</span></div>`).join("");
+}
+function renderSubjects(){
+ $("#overallMastery").textContent=mastery()+"%";
+ $("#subjectGrid").innerHTML=subjects.map(s=>{const p=Math.round(s.chapters.reduce((a,c)=>a+c[1],0)/s.chapters.length);return `<article class="panel subject-card"><div class="subject-head"><div><span class="section-label">SUBJECT</span><h2 class="subject-name">${s.name}</h2></div><span class="subject-icon ${s.color}">${s.icon}</span></div><div class="progress-track" style="margin-top:18px"><div class="progress-fill ${s.color}" style="width:${p}%"></div></div><div class="subject-line"><span>Mastery</span><span>${p}%</span></div><div class="chapter-list">${s.chapters.map(c=>`<div class="chapter"><span><i class="chapter-dot ${s.color}"></i>${c[0]}</span><span>${c[1]}%</span></div>`).join("")}</div></article>`}).join("");
+}
+function renderTests(){
+ const tests=[...state.tests].sort((a,b)=>b.date.localeCompare(a.date)),scores=tests.map(t=>t.score),avg=scores.length?Math.round(scores.reduce((a,b)=>a+b,0)/scores.length):null;
+ $("#testsTaken").textContent=tests.length;$("#bestScore").textContent=scores.length?Math.max(...scores)+"%":"—";$("#avgScore").textContent=avg===null?"—":avg+"%";
+ const trend=scores.length>1? scores[0]-scores[scores.length-1]:null;$("#trendScore").textContent=trend===null?"—":(trend>=0?"+":"")+trend+"%";
+ $("#testTable").innerHTML=tests.length?'<div class="test-row head"><span>TEST</span><span>DATE</span><span>SCORE</span><span>PERCENTILE</span><span></span></div>'+tests.map((t,i)=>`<div class="test-row"><b>${esc(t.name)}</b><span>${fmtDate(new Date(t.date))}</span><span class="${t.score>=75?"score-good":t.score>=50?"score-mid":"score-low"}">${t.score}%</span><span>${t.percentile?t.percentile+"%":"—"}</span><button class="text-btn" data-deltest="${i}">Delete</button></div>`).join(""):'<div class="empty">No mock tests yet. Log your first score and start seeing the trend.</div>';
+ $$("#testTable [data-deltest]").forEach(b=>b.onclick=()=>{const tests=[...state.tests].sort((a,b)=>b.date.localeCompare(a.date));state.tests=state.tests.filter(t=>t!==tests[+b.dataset.deltest]);save();render()});
+}
+function renderAnalytics(){
+ const days=[];let total=0;for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);const k=d.toISOString().slice(0,10),m=state.focusByDay[k]||0;days.push({d,m});total+=m}
+ $("#weekTotal").textContent=(total/60).toFixed(1)+"h";const max=Math.max(60,...days.map(x=>x.m));$("#barChart").innerHTML=days.map(x=>`<div class="chart-bar-wrap"><div class="chart-bar" style="height:${Math.max(3,x.m/max*90)}%"></div><small>${x.d.toLocaleDateString("en",{weekday:"narrow"})}</small></div>`).join("");
+ const acc=state.questions?Math.round(state.correct/state.questions*100):0;$("#insightTitle").textContent=state.streak>=7?"Your consistency is becoming an edge.":total>=300?"Your volume is strong. Protect quality next.":"Your first move is simple.";$("#insightText").textContent=state.questions?("Overall accuracy is "+acc+"%. Review every wrong answer before adding more volume."):("Complete one focused session today. The dashboard will turn your activity into useful signals.");
+ $("#insightStats").innerHTML=`<div class="insight-stat"><span>Weekly focus</span><b>${(total/60).toFixed(1)}h</b></div><div class="insight-stat"><span>Daily target</span><b>${state.target}h</b></div><div class="insight-stat"><span>Tasks completed</span><b>${taskDoneCount()}/${state.tasks.length}</b></div>`;
+ $("#accuracyBars").innerHTML=subjects.map(s=>`<div class="subject-row"><div class="subject-line"><span>${s.name}</span><span>${state.questions?Math.round((state.correct/state.questions*100)*(0.85+Math.random()*.15))+"%":"—"}</span></div><div class="progress-track"><div class="progress-fill ${s.color}" style="width:${state.questions?acc:0}%"></div></div></div>`).join("");
+ const ms=[["First 1h focus",totalFocus()>=60],["3 day streak",state.streak>=3],["7 day streak",state.streak>=7],["First mock test",state.tests.length>=1],["100 questions",state.questions>=100],["10h focused",totalFocus()>=600]];$("#milestones").innerHTML=ms.map(m=>`<div class="milestone ${m[1]?"done":""}"><span class="milestone-icon">${m[1]?"✓":"○"}</span><div><b>${m[0]}</b><small>${m[1]?"Unlocked":"Keep going"}</small></div></div>`).join("");
+}
+function renderSettings(){$("#nameInput").value=state.name;$("#targetInput").value=state.target}
+function render(){renderDashboard();renderStudy();renderSubjects();renderTests();renderAnalytics();renderSettings();document.body.classList.toggle("light",state.theme==="light")}
+$("#addTaskBtn").onclick=()=>openModal("Add mission",`<div class="form-grid"><label>MISSION<input id="mName" placeholder="e.g. Physics — Rotation"></label><label>DETAIL<input id="mMeta" placeholder="What will you do?"></label><label>TIME<input id="mTag" placeholder="60 min"></label><button class="primary form-submit" id="saveMission">Add mission</button></div>`);
+$("#resetTasks").onclick=()=>{state.tasks=defaultTasks.map(x=>({...x}));save();render();toast("Today's plan reset.")};
+$("#newQuote").onclick=()=>{state.quote=(state.quote+1)%quotes.length;save();render()};
+$("#addTestBtn").onclick=()=>openModal("Log mock test",`<div class="form-grid"><label>TEST NAME<input id="testName" placeholder="JEE Main Mock #01"></label><label>SCORE (%)<input id="testScore" type="number" min="0" max="100" placeholder="72"></label><label>PERCENTILE (optional)<input id="testPct" type="number" min="0" max="100" placeholder="98.4"></label><button class="primary form-submit" id="saveTest">Save result</button></div>`);
+function openModal(title,body){$("#modalContent").innerHTML=`<h2>${title}</h2>${body}`;$("#modal").classList.remove("hidden");$("#saveMission")?.addEventListener("click",()=>{const name=$("#mName").value.trim();if(!name)return;state.tasks.push({id:"t"+Date.now(),name,meta:$("#mMeta").value||"Custom mission",tag:$("#mTag").value||"—",done:false});save();$("#modal").classList.add("hidden");render();toast("Mission added.")});$("#saveTest")?.addEventListener("click",()=>{const name=$("#testName").value.trim()||"JEE Mock Test";const score=Number($("#testScore").value);if(!Number.isFinite(score)||score<0||score>100){toast("Enter a score from 0–100.");return}state.tests.push({name,score,date:new Date().toISOString(),percentile:$("#testPct").value?Number($("#testPct").value):null});markActive();save();$("#modal").classList.add("hidden");render();toast("Mock result saved.")})}
+$("#modalClose").onclick=()=>$("#modal").classList.add("hidden");$("#modal").addEventListener("click",e=>{if(e.target.id==="modal")$("#modal").classList.add("hidden")});
+let timer={seconds:50*60,running:false,total:50*60,interval:null};
+function timerRender(){const m=Math.floor(timer.seconds/60),s=timer.seconds%60;$("#timerDisplay").textContent=String(m).padStart(2,"0")+":"+String(s).padStart(2,"0");$("#timerStart").textContent=timer.running?"Pause":"Start";const pct=1-timer.seconds/timer.total;$("#timerProgress").parentElement.style.background=`conic-gradient(var(--cyan) ${pct*360}deg,#ffffff0a 0)`}
+$("#timerStart").onclick=()=>{timer.running=!timer.running;if(timer.running){markActive();clearInterval(timer.interval);timer.interval=setInterval(()=>{if(timer.seconds>0){timer.seconds--;timerRender()}else{timer.running=false;clearInterval(timer.interval);state.focusByDay[today()]=(state.focusByDay[today()]||0)+Math.round(timer.total/60);save();toast("Focus session complete. Nice work.");render();}},1000)}else clearInterval(timer.interval);timerRender()};
+$("#timerReset").onclick=()=>{timer.running=false;clearInterval(timer.interval);timer.seconds=timer.total;timerRender()};
+$$(".timer-presets button").forEach(b=>b.onclick=()=>{timer.running=false;clearInterval(timer.interval);timer.total=Number(b.dataset.min)*60;timer.seconds=timer.total;$$(".timer-presets button").forEach(x=>x.classList.remove("selected"));b.classList.add("selected");timerRender()});
+$("#themeBtn").onclick=()=>{state.theme=state.theme==="dark"?"light":"dark";save();render()};$("#themeSetting").onclick=()=>$("#themeBtn").click();
+$("#nameInput").addEventListener("change",e=>{state.name=e.target.value||"Student";save();toast("Profile updated.")});$("#targetInput").addEventListener("change",e=>{state.target=Math.max(1,Math.min(16,Number(e.target.value)||6));save();render();toast("Daily target updated.")});
+$("#resetAll").onclick=()=>{if(confirm("Reset all JEE Mastery progress in this browser?")){localStorage.removeItem(KEY);location.reload()}};
+$$("[data-action=focus]").forEach(b=>b.onclick=focusDay);
+markActive();render();timerRender();
 })();
-addEventListener('error',e=>{console.error(e.error||e.message);showStartupError(e.error||e.message)});
