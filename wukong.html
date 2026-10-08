@@ -5,21 +5,9 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>JEE Mastery — Mountain Realm</title>
 <link rel="stylesheet" href="./wukong.css">
-<script>
-(function(){
- const boot=()=>document.getElementById('boot');
- window.addEventListener('error',function(e){
-   const b=boot(); if(b){b.style.opacity='1';b.innerHTML='<b>STARTUP ERROR</b><span style="max-width:90vw;color:#f0b5a5">'+String(e.message||'Game startup failed')+'</span><small style="margin-top:12px;color:#aebca9">Reload this page once. If this remains, the error above tells us exactly what your phone is rejecting.</small>';}
- });
- window.addEventListener('unhandledrejection',function(e){
-   const b=boot(); if(b){b.style.opacity='1';b.innerHTML='<b>STARTUP ERROR</b><span style="max-width:90vw;color:#f0b5a5">'+String(e.reason?.message||e.reason||'Module failed to load')+'</span><small style="margin-top:12px;color:#aebca9">Three.js could not start on this browser/network.</small>';}
- });
- setTimeout(function(){const b=boot();if(b&&!b.dataset.started){b.innerHTML+='<small style="margin-top:16px;color:#d4ad62">Still initializing... please wait a few seconds.</small>'; }},5000);
-})();
-</script>
 </head>
 <body>
-<div id="boot"><b>MOUNTAIN REALM</b><span>Loading the living mountain...</span><i><em></em></i></div>
+<div id="boot" class="hidden"></div>
 <div id="hud">
   <div class="brand">JEE MASTERY <small>REALM I · THE JADE MOUNTAINS</small></div>
   <div class="bars">
