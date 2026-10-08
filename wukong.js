@@ -116,7 +116,7 @@ shrineOrb.position.y=sy+5.2+Math.sin(t*.0018)*.18;fireflies.rotation.y=t*.00004;
 for(let i=effects.length-1;i>=0;i--){const e=effects[i];e.userData.t+=dt;const q=e.userData.t/e.userData.d;e.scale.setScalar(1+q*3);e.material.opacity=.8*(1-q);if(q>=1){fx.remove(e);e.material.dispose();effects.splice(i,1)}}
 hud();perf=perf*.9+(performance.now()-begin)*.1;qualityTimer-=dt;if(qualityTimer<0){qualityTimer=1.5;const target=mobile?15:13;if(perf>target+4)quality=Math.max(.68,quality-.06);else if(perf<target-3)quality=Math.min(Math.min(devicePixelRatio,mobile?1:1.3),quality+.03);renderer.setPixelRatio(quality)}
 fpsFrames++;fpsTimer+=dt;if(fpsTimer>.5){document.getElementById('fps').textContent=Math.round(fpsFrames/fpsTimer);fpsFrames=0;fpsTimer=0}renderer.render(scene,camera)}
-streamTerrain(true);camera.position.set(0,5,29);camera.lookAt(player.pos);started=true;document.getElementById('boot').style.opacity=0;setTimeout(()=>document.getElementById('boot').remove(),650);animate(0);
+streamTerrain(true);camera.position.set(0,5,29);camera.lookAt(player.pos);started=true;animate(0);
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
 
 }catch(err){
