@@ -1,5 +1,9 @@
-import * as THREE from 'https://unpkg.com/three@0.186.1/build/three.module.js';
-
+(function(){
+const showStartupError=(err)=>{
+ const box=document.getElementById('startupError');
+ if(box){box.hidden=false;box.querySelector('b').textContent='GAME STARTUP FAILED';box.querySelector('span').textContent=String(err&&err.message||err||'Unknown startup error');}
+};
+try{
 const mobile=matchMedia('(max-width:900px)').matches;
 const scene=new THREE.Scene();
 scene.background=new THREE.Color(0x82988a);
@@ -114,3 +118,8 @@ hud();perf=perf*.9+(performance.now()-begin)*.1;qualityTimer-=dt;if(qualityTimer
 fpsFrames++;fpsTimer+=dt;if(fpsTimer>.5){document.getElementById('fps').textContent=Math.round(fpsFrames/fpsTimer);fpsFrames=0;fpsTimer=0}renderer.render(scene,camera)}
 streamTerrain(true);camera.position.set(0,5,29);camera.lookAt(player.pos);started=true;document.getElementById('boot').style.opacity=0;setTimeout(()=>document.getElementById('boot').remove(),650);animate(0);
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+
+}catch(err){
+ console.error(err); showStartupError(err);
+}
+})();
