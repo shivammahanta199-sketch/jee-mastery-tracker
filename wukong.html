@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>JEE Mastery — Mountain Realm</title>
+<link rel="stylesheet" href="./wukong.css">
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js"}}</script>
+</head>
+<body>
+<div id="boot"><b>MOUNTAIN REALM</b><span>Preparing the forest...</span><i><em></em></i></div>
+<div id="hud">
+  <div class="brand">JEE MASTERY <small>REALM I</small></div>
+  <div class="stats"><span>HP <b id="hp">100</b></span><span>STAMINA <b id="stamina">100</b></span><span>ORB <b id="orb">0</b></span></div>
+  <div class="hint">WASD MOVE · SPACE JUMP · SHIFT SPRINT · LMB ATTACK · RMB GUARD · E INTERACT · ESC PAUSE</div>
+  <div id="reticle">+</div>
+  <div id="boss" class="hidden"><b>STONE WARDEN</b><i><em></em></i></div>
+  <div id="message"></div>
+</div>
+<div id="mobile" class="hidden">
+  <div id="stick"><i></i></div><div id="look"></div>
+  <button id="attack">ATTACK</button><button id="jump">JUMP</button><button id="guard">GUARD</button>
+</div>
+<div id="pause" class="hidden"><h1>PAUSED</h1><p>The mountains can wait. Humanity has invented menus.</p><button id="resume">RETURN</button></div>
+<script type="module" src="./wukong.js"></script>
+</body></html>
