@@ -33,13 +33,13 @@
 <script>
 (function(){
  const sources=[
-  'https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.min.js',
-  'https://unpkg.com/three@0.186.1/build/three.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/three.js/r186/three.min.js'
+  'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js',
+  'https://unpkg.com/three@0.160.0/build/three.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/three.js/r160/three.min.js'
  ];
  function fail(msg){const b=document.getElementById('startupError');b.hidden=false;b.querySelector('span').textContent=msg;}
  function load(i){
-  if(i>=sources.length){fail('Three.js could not be loaded. Check your browser connection and reload once.');return;}
+  if(i>=sources.length){fail('Three.js could not be loaded. The game engine sources all failed to respond.');return;}
   const s=document.createElement('script');s.src=sources[i];s.onload=()=>loadGame();s.onerror=()=>load(i+1);document.head.appendChild(s);
  }
  function loadGame(){
