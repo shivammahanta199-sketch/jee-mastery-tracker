@@ -1,74 +1,37 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#f4f1ea">
-<meta name="description" content="JEE Mastery — a personal study operating system for JEE preparation.">
-<title>JEE Mastery — Study, deliberately.</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#f6f5f0"><meta name="description" content="JEE Mastery — your personal preparation system.">
+<title>JEE Mastery</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="./wukong.css">
 </head>
 <body>
+<div id="onboarding" class="onboarding">
+  <div class="intro-visual"><div class="brand-mark">JM</div><div class="intro-word">JEE<br><i>MASTERY</i></div><p>A preparation system built around your actual life — not someone else's timetable.</p><div class="intro-foot">01 — PERSONAL SETUP<br>02 — YOUR CURRICULUM<br>03 — YOUR EXECUTION</div></div>
+  <div class="intro-panel"><div class="intro-top"><span id="stepNo">01 / 05</span><button id="skipIntro">Skip setup</button></div><div id="introContent"></div><div class="intro-nav"><button id="introBack" class="ghost">Back</button><button id="introNext" class="primary">Continue <span>→</span></button></div></div>
+</div>
+<div id="app" class="app hidden">
+<aside class="sidebar">
+  <div class="side-brand"><span>JM</span><div><b>JEE MASTERY</b><small>PERSONAL STUDY OS</small></div></div>
+  <nav>
+    <button class="nav active" data-view="today"><span>01</span>Today</button>
+    <button class="nav" data-view="plan"><span>02</span>Plan</button>
+    <button class="nav" data-view="curriculum"><span>03</span>Curriculum</button>
+    <button class="nav" data-view="tests"><span>04</span>Tests</button>
+    <button class="nav" data-view="review"><span>05</span>Review</button>
+  </nav>
+  <div class="side-bottom"><button class="nav" data-view="settings"><span>••</span>Setup</button><button id="modeBtn" class="mode">◐</button></div>
+</aside>
+<main class="main">
+<header class="topbar"><button id="mobileMenu" class="mobile-menu">☰</button><div><small id="sectionKicker">TODAY</small><b id="sectionTitle">Your desk</b></div><div class="top-actions"><button id="quickAdd" class="quick">＋ Add</button><button id="command" class="command">⌘ K</button><button id="profile" class="avatar">S</button></div></header>
+<section id="content" class="content"></section>
+</main>
+</div>
+<div id="modal" class="modal hidden"><div class="modal-card"><button id="closeModal" class="close">×</button><div id="modalBody"></div></div></div>
+<div id="palette" class="palette hidden"><div class="palette-card"><input id="paletteInput" placeholder="Jump to…"><div id="paletteList"></div></div></div>
 <div id="toast" class="toast"></div>
-
-<div id="onboarding" class="onboarding hidden">
-  <div class="onboard-shell">
-    <aside class="onboard-side">
-      <div class="brand"><span>JM</span><b>JEE MASTERY</b></div>
-      <div class="onboard-copy">
-        <small>YOUR PREPARATION, YOUR SYSTEM</small>
-        <h1>Build the way<br><i>you study.</i></h1>
-        <p>No pre-filled syllabus. No fake targets. Start with your reality, then make the workspace yours.</p>
-      </div>
-      <div class="step-rail" id="stepRail"></div>
-    </aside>
-    <main class="onboard-main">
-      <div class="onboard-top"><span id="stepCount">01 / 06</span><button id="skipOnboarding">Skip for now</button></div>
-      <div id="onboardContent"></div>
-      <div class="onboard-actions"><button id="backStep" class="quiet">Back</button><button id="nextStep" class="solid">Continue <span>→</span></button></div>
-    </main>
-  </div>
-</div>
-
-<div id="app" class="app">
-  <aside class="rail">
-    <div class="rail-brand"><span>JM</span><div><b>JEE<br>MASTERY</b><small>STUDY OS</small></div></div>
-    <nav class="rail-nav">
-      <button class="rail-link active" data-view="home"><span>01</span><b>Today</b></button>
-      <button class="rail-link" data-view="plan"><span>02</span><b>Plan</b></button>
-      <button class="rail-link" data-view="curriculum"><span>03</span><b>Curriculum</b></button>
-      <button class="rail-link" data-view="tests"><span>04</span><b>Tests</b></button>
-      <button class="rail-link" data-view="review"><span>05</span><b>Review</b></button>
-    </nav>
-    <div class="rail-bottom">
-      <button class="rail-link" data-view="settings"><span>••</span><b>Setup</b></button>
-      <div class="mini-profile"><span id="miniInitial">S</span><div><b id="miniName">Student</b><small id="miniYear">JEE profile</small></div></div>
-    </div>
-  </aside>
-
-  <main class="workspace">
-    <header class="topbar">
-      <div class="mobile-brand"><b>JEE MASTERY</b><small>STUDY OS</small></div>
-      <div class="top-context"><span id="topKicker">TODAY</span><b id="topTitle">Your desk</b></div>
-      <div class="top-tools"><button class="command" id="commandBtn"><span>⌘</span> Command</button><button class="theme-toggle" id="themeBtn">◐</button><button class="avatar" id="avatarBtn">S</button></div>
-    </header>
-
-    <section class="canvas">
-      <div id="view-home" class="view active"></div>
-      <div id="view-plan" class="view"></div>
-      <div id="view-curriculum" class="view"></div>
-      <div id="view-tests" class="view"></div>
-      <div id="view-review" class="view"></div>
-      <div id="view-settings" class="view"></div>
-    </section>
-  </main>
-</div>
-
-<div id="modal" class="modal hidden"><div class="modal-card"><button id="modalClose">×</button><div id="modalContent"></div></div></div>
-<div id="commandPalette" class="palette hidden"><div class="palette-card"><input id="commandInput" placeholder="Jump to a view or action…"><div id="commandList"></div></div></div>
 <script src="./wukong.js"></script>
-</body>
-</html>
+</body></html>
