@@ -1,20 +1,11 @@
 (()=>{
 "use strict";
 const KEY="jee-mastery-v3";
-const subjects=[
- {id:"math",name:"Mathematics",icon:"∑",color:"math",chapters:[["Sets & Relations",72],["Quadratic Equations",61],["Limits & Continuity",48],["Matrices",82],["Probability",39]]},
- {id:"physics",name:"Physics",icon:"ϕ",color:"physics",chapters:[["Units & Dimensions",88],["Kinematics",74],["NLM & Friction",53],["Electrostatics",46],["Modern Physics",67]]},
- {id:"chemistry",name:"Chemistry",icon:"⚗",color:"chemistry",chapters:[["Mole Concept",79],["Chemical Bonding",63],["Thermodynamics",52],["Organic Basics",44],["Coordination",71]]}
-];
+const subjects=[];
 const quotes=["The secret is not motivation. It is showing up when motivation is gone.","A difficult chapter today is a confident question tomorrow.","Your rank is built in the hours nobody sees.","Do fewer things. Do them deeply. Then repeat tomorrow.","Consistency beats intensity when the syllabus is this big.","Don't chase the feeling of progress. Chase completed work."];
-const defaultTasks=[
- {id:"t1",name:"Mathematics — Limits & Continuity",meta:"Concepts + 25 PYQs",tag:"90 min",done:false},
- {id:"t2",name:"Physics — Electrostatics",meta:"Revise formulas + timed set",tag:"60 min",done:false},
- {id:"t3",name:"Chemistry — Organic Basics",meta:"Reaction map + 20 MCQs",tag:"50 min",done:false},
- {id:"t4",name:"Error log review",meta:"Revisit yesterday's mistakes",tag:"30 min",done:false}
-];
+const defaultTasks=[];
 let state=JSON.parse(localStorage.getItem(KEY)||"null")||{
- name:"Mahanta",target:6,tasks:defaultTasks,focusByDay:{},streak:0,lastActive:null,
+ name:"Student",target:0,tasks:defaultTasks,focusByDay:{},streak:0,lastActive:null,
  questions:0,correct:0,tests:[],theme:"dark",quote:0
 };
 function save(){localStorage.setItem(KEY,JSON.stringify(state))}
@@ -32,7 +23,7 @@ function markActive(){const d=today(),last=state.lastActive;if(last!==d){if(last
 function totalFocus(){return Object.values(state.focusByDay).reduce((a,b)=>a+b,0)}
 function focusText(min){return Math.floor(min/60)+"h "+(min%60)+"m"}
 function taskDoneCount(){return state.tasks.filter(x=>x.done).length}
-function mastery(){const vals=subjects.flatMap(s=>s.chapters.map(c=>c[1]));return Math.round(vals.reduce((a,b)=>a+b,0)/vals.length)}
+function mastery(){const vals=subjects.flatMap(s=>s.chapters.map(c=>c[1]));return vals.length?Math.round(vals.reduce((a,b)=>a+b,0)/vals.length):0}
 function renderDashboard(){
  $("#todayDate").textContent=fmtDate(new Date());$("#sideStreak").textContent=state.streak+" day streak";$("#streakStat").textContent=state.streak;
  $("#focusStat").textContent=focusText(totalFocus());$("#focusDelta").textContent=state.target+"h daily target";
@@ -43,7 +34,7 @@ function renderDashboard(){
  $$("#taskList .check").forEach(b=>b.onclick=()=>{const t=state.tasks.find(x=>x.id===b.dataset.task);t.done=!t.done;if(t.done)markActive();save();render()});
  $("#subjectBars").innerHTML=subjects.map(s=>{const p=Math.round(s.chapters.reduce((a,c)=>a+c[1],0)/s.chapters.length);return `<div class="subject-row"><div class="subject-line"><span>${s.name}</span><span>${p}%</span></div><div class="progress-track"><div class="progress-fill ${s.color}" style="width:${p}%"></div></div></div>`}).join("");
  const cells=[];for(let i=0;i<90;i++){const d=new Date();d.setDate(d.getDate()-(89-i));const k=d.toISOString().slice(0,10),v=state.focusByDay[k]||0;cells.push(`<i class="heat-cell ${v>=90?"l4":v>=50?"l3":v>=25?"l2":v>0?"l1":""}" title="${k}: ${v}m"></i>`)}$("#heatmap").innerHTML=cells.join("");
- $("#quoteText").textContent=quotes[state.quote%quotes.length];
+ $("#quoteText").textContent=quotes[quotes.length?state.quote%quotes.length:0];
 }
 function renderStudy(){
  const now=new Date(),start=new Date(now);start.setDate(now.getDate()-((now.getDay()+6)%7));
@@ -68,7 +59,7 @@ function renderAnalytics(){
  const acc=state.questions?Math.round(state.correct/state.questions*100):0;$("#insightTitle").textContent=state.streak>=7?"Your consistency is becoming an edge.":total>=300?"Your volume is strong. Protect quality next.":"Your first move is simple.";$("#insightText").textContent=state.questions?("Overall accuracy is "+acc+"%. Review every wrong answer before adding more volume."):("Complete one focused session today. The dashboard will turn your activity into useful signals.");
  $("#insightStats").innerHTML=`<div class="insight-stat"><span>Weekly focus</span><b>${(total/60).toFixed(1)}h</b></div><div class="insight-stat"><span>Daily target</span><b>${state.target}h</b></div><div class="insight-stat"><span>Tasks completed</span><b>${taskDoneCount()}/${state.tasks.length}</b></div>`;
  $("#accuracyBars").innerHTML=subjects.map(s=>`<div class="subject-row"><div class="subject-line"><span>${s.name}</span><span>${state.questions?Math.round((state.correct/state.questions*100)*(0.85+Math.random()*.15))+"%":"—"}</span></div><div class="progress-track"><div class="progress-fill ${s.color}" style="width:${state.questions?acc:0}%"></div></div></div>`).join("");
- const ms=[["First 1h focus",totalFocus()>=60],["3 day streak",state.streak>=3],["7 day streak",state.streak>=7],["First mock test",state.tests.length>=1],["100 questions",state.questions>=100],["10h focused",totalFocus()>=600]];$("#milestones").innerHTML=ms.map(m=>`<div class="milestone ${m[1]?"done":""}"><span class="milestone-icon">${m[1]?"✓":"○"}</span><div><b>${m[0]}</b><small>${m[1]?"Unlocked":"Keep going"}</small></div></div>`).join("");
+ const ms=[["First focus session",totalFocus()>=1],["3 day streak",state.streak>=3],["7 day streak",state.streak>=7],["First mock test",state.tests.length>=1]];$("#milestones").innerHTML=ms.map(m=>`<div class="milestone ${m[1]?"done":""}"><span class="milestone-icon">${m[1]?"✓":"○"}</span><div><b>${m[0]}</b><small>${m[1]?"Unlocked":"Keep going"}</small></div></div>`).join("");
 }
 function renderSettings(){$("#nameInput").value=state.name;$("#targetInput").value=state.target}
 function render(){renderDashboard();renderStudy();renderSubjects();renderTests();renderAnalytics();renderSettings();document.body.classList.toggle("light",state.theme==="light")}
