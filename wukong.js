@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js';
 
 const mobile=matchMedia('(max-width:900px)').matches;
 const scene=new THREE.Scene();
