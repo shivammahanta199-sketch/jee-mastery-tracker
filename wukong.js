@@ -7,7 +7,7 @@ try{
 const mobile=matchMedia('(max-width:900px)').matches;
 const scene=new THREE.Scene();
 scene.background=new THREE.Color(0x82988a);
-scene.fog=new THREE.FogExp2(0x708477,mobile ? .010 : .0056);
+scene.fog=new THREE.FogExp2(0x708477,mobile ? .0045 : .0028);
 const camera=new THREE.PerspectiveCamera(58,innerWidth/innerHeight,.05,700);
 const renderer=new THREE.WebGLRenderer({antialias:!mobile,powerPreference:'high-performance',stencil:false,depth:true});
 renderer.setPixelRatio(Math.min(devicePixelRatio,mobile?1:1.3));renderer.setSize(innerWidth,innerHeight);
@@ -49,6 +49,8 @@ o.position.set(x,y+5.1*s,z);o.scale.set(2.1*s,2.6*s,2.1*s);o.rotation.y=hash(i+9
 trunks.instanceMatrix.needsUpdate=true;crowns.instanceMatrix.needsUpdate=true;world.add(trunks,crowns)}
 function rocks(){const n=mobile?70:150,im=new THREE.InstancedMesh(G.rock,M.rock,n),o=new THREE.Object3D();
 for(let i=0;i<n;i++){const x=(hash(i*8)-.5)*180,z=(hash(i*12)-.5)*240,y=height(x,z);o.position.set(x,y+.2,z);const s=.3+hash(i*3)*1.8;o.scale.set(s,s*(.55+hash(i)*.8),s);o.rotation.set(hash(i)*3,hash(i+2)*3,hash(i+4)*3);o.updateMatrix();im.setMatrixAt(i,o.matrix)}im.instanceMatrix.needsUpdate=true;world.add(im)}
+const base=new THREE.Mesh(new THREE.PlaneGeometry(420,520),new THREE.MeshStandardMaterial({color:0x304c36,roughness:1}));base.rotation.x=-Math.PI/2;base.position.y=-3.5;base.position.z=45;base.receiveShadow=true;world.add(base);
+for(let i=0;i<9;i++){const m=new THREE.Mesh(new THREE.ConeGeometry(18+hash(i)*14,35+hash(i+4)*30,8),new THREE.MeshStandardMaterial({color:0x354c40,roughness:1}));m.position.set((i-4)*34,10,-105-hash(i)*35);m.scale.x=1.6;m.castShadow=!mobile;world.add(m)}
 forest();rocks();
 
 const river=new THREE.Mesh(new THREE.PlaneGeometry(42,240),M.water);river.rotation.x=-Math.PI/2;river.position.set(0,-.1,45);world.add(river);
@@ -116,7 +118,7 @@ shrineOrb.position.y=sy+5.2+Math.sin(t*.0018)*.18;fireflies.rotation.y=t*.00004;
 for(let i=effects.length-1;i>=0;i--){const e=effects[i];e.userData.t+=dt;const q=e.userData.t/e.userData.d;e.scale.setScalar(1+q*3);e.material.opacity=.8*(1-q);if(q>=1){fx.remove(e);e.material.dispose();effects.splice(i,1)}}
 hud();perf=perf*.9+(performance.now()-begin)*.1;qualityTimer-=dt;if(qualityTimer<0){qualityTimer=1.5;const target=mobile?15:13;if(perf>target+4)quality=Math.max(.68,quality-.06);else if(perf<target-3)quality=Math.min(Math.min(devicePixelRatio,mobile?1:1.3),quality+.03);renderer.setPixelRatio(quality)}
 fpsFrames++;fpsTimer+=dt;if(fpsTimer>.5){document.getElementById('fps').textContent=Math.round(fpsFrames/fpsTimer);fpsFrames=0;fpsTimer=0}renderer.render(scene,camera)}
-streamTerrain(true);camera.position.set(0,5,29);camera.lookAt(player.pos);started=true;animate(0);
+streamTerrain(true);camera.position.set(0,9,34);camera.lookAt(0,2,8);started=true;animate(0);
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
 
 }catch(err){
