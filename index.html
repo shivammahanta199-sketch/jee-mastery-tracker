@@ -2,50 +2,114 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
-<title>MOUNTAIN REALM</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#07111f">
+<meta name="description" content="JEE Mastery — a focused command center for JEE preparation.">
+<title>JEE Mastery — Your Rank Starts Today</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="./wukong.css">
 </head>
 <body>
-<div id="boot" class="hidden"></div>
-<div id="hud">
-  <div class="brand">MOUNTAIN REALM <small>THE JADE MOUNTAINS</small></div>
-  <div class="bars">
-    <div class="bar hp"><span>HP</span><i><b id="hpBar"></b></i><strong id="hp">100</strong></div>
-    <div class="bar stamina"><span>STAMINA</span><i><b id="staminaBar"></b></i><strong id="stamina">100</strong></div>
-  </div>
-  <div class="stats"><span>SPIRIT <b id="orb">0</b></span><span>FPS <b id="fps">--</b></span></div>
-  <div class="objective"><small>OBJECTIVE</small><b id="objective">EXPLORE THE JADE VALLEY</b><em id="objectiveHint">Find the shrine, then face the Stone Warden.</em></div>
-  <div class="boss hidden" id="boss"><b>STONE WARDEN</b><i><em></em></i></div>
-  <div id="message"></div>
-  <div class="reticle">+</div>
-  <div class="hint">WASD · SPACE · SHIFT · LMB ATTACK · RMB GUARD · E INTERACT · ESC PAUSE</div>
+<div class="ambient ambient-a"></div><div class="ambient ambient-b"></div>
+<div id="toast" class="toast" role="status"></div>
+<div id="app">
+  <aside class="sidebar">
+    <div class="brand"><span class="brand-mark">JM</span><div><b>JEE MASTERY</b><small>COMMAND CENTER</small></div></div>
+    <nav>
+      <button class="nav-item active" data-view="dashboard"><span>⌂</span>Dashboard</button>
+      <button class="nav-item" data-view="study"><span>◷</span>Study Plan</button>
+      <button class="nav-item" data-view="subjects"><span>◈</span>Subjects</button>
+      <button class="nav-item" data-view="tests"><span>◇</span>Mock Tests</button>
+      <button class="nav-item" data-view="analytics"><span>↗</span>Analytics</button>
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="streak-mini"><span class="fire">✦</span><div><b id="sideStreak">0 day streak</b><small>Keep the chain alive</small></div></div>
+      <button class="settings-btn" data-view="settings">⚙ Settings</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <button id="menuBtn" class="icon-btn mobile-only">☰</button>
+      <div class="crumb"><span id="pageKicker">OVERVIEW</span><strong id="pageTitle">Dashboard</strong></div>
+      <div class="top-actions">
+        <div class="live-chip"><i></i> LOCAL DATA</div>
+        <button id="themeBtn" class="icon-btn" title="Toggle theme">◐</button>
+        <button id="profileBtn" class="profile">M<span>J</span></button>
+      </div>
+    </header>
+
+    <section class="content">
+      <div id="view-dashboard" class="view active">
+        <div class="hero reveal">
+          <div class="hero-copy">
+            <div class="eyebrow"><span></span> JEE 2027 • MISSION CONTROL</div>
+            <h1>Build the rank<br><em>you want.</em></h1>
+            <p>One focused session at a time. Track what matters, attack weak areas, and make every day count.</p>
+            <div class="hero-actions"><button class="primary" data-action="focus">Start focus session <b>→</b></button><button class="ghost" data-view="study">Open today's plan</button></div>
+          </div>
+          <div class="hero-orbit"><div class="orbit-ring ring-1"></div><div class="orbit-ring ring-2"></div><div class="orbit-core"><span id="heroPercent">0%</span><small>MASTERY</small></div><div class="orbit-dot dot-1"></div><div class="orbit-dot dot-2"></div></div>
+        </div>
+
+        <div class="stat-grid reveal delay-1">
+          <article class="stat-card"><div class="stat-icon cyan">◷</div><div><small>FOCUS TIME</small><strong id="focusStat">0h 0m</strong><span id="focusDelta">Start your first session</span></div></article>
+          <article class="stat-card"><div class="stat-icon gold">✦</div><div><small>STREAK</small><strong><span id="streakStat">0</span> days</strong><span>Consistency compounds</span></div></article>
+          <article class="stat-card"><div class="stat-icon violet">◈</div><div><small>QUESTIONS</small><strong id="questionStat">0</strong><span id="accuracyStat">No attempts yet</span></div></article>
+          <article class="stat-card"><div class="stat-icon coral">↗</div><div><small>MOCK AVERAGE</small><strong id="mockStat">—</strong><span id="mockDelta">Add your first test</span></div></article>
+        </div>
+
+        <div class="dashboard-grid reveal delay-2">
+          <section class="panel today-panel">
+            <div class="panel-head"><div><small class="section-label">TODAY</small><h2>Mission checklist</h2></div><span class="date-pill" id="todayDate"></span></div>
+            <div id="taskList" class="task-list"></div>
+            <button class="add-task" id="addTaskBtn">＋ Add a task</button>
+          </section>
+          <section class="panel progress-panel">
+            <div class="panel-head"><div><small class="section-label">SUBJECT HEALTH</small><h2>Where you stand</h2></div><button class="text-btn" data-view="subjects">View all →</button></div>
+            <div id="subjectBars"></div>
+          </section>
+        </div>
+
+        <div class="dashboard-grid lower reveal delay-3">
+          <section class="panel heat-panel"><div class="panel-head"><div><small class="section-label">CONSISTENCY</small><h2>Activity map</h2></div><span class="legend">Less <i></i><i></i><i></i><i></i> More</span></div><div id="heatmap" class="heatmap"></div></section>
+          <section class="panel quote-panel"><div class="quote-mark">“</div><p id="quoteText">The secret is not motivation. It is showing up when motivation is gone.</p><small>— YOUR FUTURE SELF</small><button id="newQuote" class="quote-refresh">↻</button></section>
+        </div>
+      </div>
+
+      <div id="view-study" class="view">
+        <div class="page-intro"><div><span class="eyebrow"><span></span> EXECUTION</span><h1>Study Plan</h1><p>Turn a huge syllabus into small wins you can actually finish.</p></div><button class="primary" data-action="focus">Start focus <b>→</b></button></div>
+        <div class="week-strip" id="weekStrip"></div>
+        <div class="study-layout"><section class="panel schedule-panel"><div class="panel-head"><div><small class="section-label">SCHEDULE</small><h2 id="scheduleTitle">Today's blocks</h2></div><button class="text-btn" id="resetTasks">Reset day</button></div><div id="scheduleList"></div></section>
+        <aside class="panel focus-card"><div class="focus-glow"></div><small class="section-label">FOCUS ENGINE</small><h2 id="timerDisplay">50:00</h2><p id="timerMode">Deep work</p><div class="timer-ring"><div id="timerProgress"></div></div><div class="timer-controls"><button id="timerStart" class="primary">Start</button><button id="timerReset" class="ghost">Reset</button></div><div class="timer-presets"><button data-min="25">25</button><button data-min="50" class="selected">50</button><button data-min="90">90</button></div></aside></div>
+      </div>
+
+      <div id="view-subjects" class="view">
+        <div class="page-intro"><div><span class="eyebrow"><span></span> SYLLABUS</span><h1>Subject Lab</h1><p>Know your strengths. Hunt your weakest chapters.</p></div><div class="mastery-badge"><b id="overallMastery">0%</b><small>OVERALL MASTERY</small></div></div>
+        <div id="subjectGrid" class="subject-grid"></div>
+      </div>
+
+      <div id="view-tests" class="view">
+        <div class="page-intro"><div><span class="eyebrow"><span></span> PERFORMANCE</span><h1>Mock Tests</h1><p>Every test is data. Every mistake is a clue.</p></div><button class="primary" id="addTestBtn">＋ Log mock test</button></div>
+        <div class="test-summary"><div class="summary-card"><small>TESTS TAKEN</small><b id="testsTaken">0</b></div><div class="summary-card"><small>BEST SCORE</small><b id="bestScore">—</b></div><div class="summary-card"><small>AVERAGE</small><b id="avgScore">—</b></div><div class="summary-card"><small>TREND</small><b id="trendScore">—</b></div></div>
+        <section class="panel table-panel"><div class="panel-head"><div><small class="section-label">HISTORY</small><h2>Recent mocks</h2></div></div><div id="testTable"></div></section>
+      </div>
+
+      <div id="view-analytics" class="view">
+        <div class="page-intro"><div><span class="eyebrow"><span></span> INTELLIGENCE</span><h1>Analytics</h1><p>Use your own data to decide what to do next.</p></div></div>
+        <div class="analytics-grid"><section class="panel big-chart"><div class="panel-head"><div><small class="section-label">FOCUS TREND</small><h2>Hours this week</h2></div><span class="chart-total" id="weekTotal">0h</span></div><div id="barChart" class="bar-chart"></div></section><section class="panel insight-panel"><small class="section-label">NEXT MOVE</small><h2 id="insightTitle">Your first move is simple.</h2><p id="insightText">Complete one focused session today. The dashboard will turn your activity into useful signals.</p><div class="insight-line"></div><div id="insightStats"></div></section></div>
+        <div class="analytics-grid second"><section class="panel"><div class="panel-head"><div><small class="section-label">QUESTION ACCURACY</small><h2>By subject</h2></div></div><div id="accuracyBars"></div></section><section class="panel"><div class="panel-head"><div><small class="section-label">MILESTONES</small><h2>Progress markers</h2></div></div><div id="milestones" class="milestones"></div></section></div>
+      </div>
+
+      <div id="view-settings" class="view">
+        <div class="page-intro"><div><span class="eyebrow"><span></span> CONTROL</span><h1>Settings</h1><p>Your data stays in this browser. Change the experience without losing your progress.</p></div></div>
+        <section class="panel settings-panel"><div class="setting-row"><div><b>Student name</b><small>Shown on your profile badge</small></div><input id="nameInput" class="setting-input" placeholder="Your name"></div><div class="setting-row"><div><b>Daily target</b><small>Hours of focused study</small></div><input id="targetInput" class="setting-input" type="number" min="1" max="16"></div><div class="setting-row"><div><b>Theme</b><small>Switch between dark and light workspace</small></div><button id="themeSetting" class="ghost">Toggle theme</button></div><div class="danger-zone"><b>Reset all progress</b><p>This clears tasks, focus history, questions and mock tests from this browser.</p><button id="resetAll" class="danger">Reset everything</button></div></section>
+      </div>
+    </section>
+  </main>
 </div>
-<div id="mobile" class="hidden" aria-label="Touch controls">
-  <div id="stick"><i></i></div>
-  <div id="look"></div>
-  <div class="action-stack"><button id="attack">ATTACK</button><button id="guard">GUARD</button></div>
-  <div class="utility-stack"><button id="jump">JUMP</button><button id="sprint">SPRINT</button><button id="interact">INTERACT</button></div>
-  <button id="pauseBtn">Ⅱ</button>
-</div>
-<div id="pause" class="hidden"><h1>PAUSED</h1><p>The mountain is patient. Your frame rate is less so.</p><button id="resume">RETURN TO VALLEY</button></div>
-<div id="startupError" hidden style="position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:50;max-width:min(520px,90vw);padding:20px 22px;background:#0b120fcc;border:1px solid #9b875a;color:#eef2df;text-align:center;font:14px system-ui;box-shadow:0 14px 50px #0009"><b style="display:block;font:700 22px Georgia,serif;letter-spacing:.08em">GAME STARTUP FAILED</b><span style="display:block;margin-top:10px;color:#f0b5a5"></span></div>
-<script>
-(function(){
- const sources=[
-  'https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.min.js',
-  'https://unpkg.com/three@0.186.1/build/three.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/three.js/r186/three.min.js'
- ];
- function fail(msg){const b=document.getElementById('startupError');b.hidden=false;b.querySelector('span').textContent=msg;}
- function load(i){
-  if(i>=sources.length){fail('Three.js could not be loaded. Check your browser connection and reload once.');return;}
-  const s=document.createElement('script');s.src=sources[i];s.onload=()=>loadGame();s.onerror=()=>load(i+1);document.head.appendChild(s);
- }
- function loadGame(){
-  const s=document.createElement('script');s.src='./wukong.js';s.onerror=()=>fail('wukong.js could not be loaded.');document.body.appendChild(s);
- }
- load(0);
-})();
-</script>
-</body></html>
+<div id="modal" class="modal hidden"><div class="modal-card"><button class="modal-close" id="modalClose">×</button><div id="modalContent"></div></div></div>
+<script src="./wukong.js"></script>
+</body>
+</html>
