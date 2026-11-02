@@ -6,6 +6,8 @@ import android.net.Uri
 import android.os.Bundle
 import android.app.Activity
 import android.view.View
+import android.view.GestureDetector
+import android.view.MotionEvent
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -34,8 +36,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.ui.geometry.Offset
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
@@ -132,23 +132,26 @@ private fun VaultApp() {
                         resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
                         setShowFastForwardButton(true)
                         setShowRewindButton(true)
-                    } }, update = { it.player = player }, modifier = Modifier.fillMaxSize())
-                    Box(
-                        Modifier.fillMaxSize().pointerInput(player) {
-                            detectTapGestures(
-                                onDoubleTap = { point ->
-                                    val p = player ?: return@detectTapGestures
-                                    val jump = 10_000L
-                                    if (point.x < size.width / 2f) p.seekTo((p.currentPosition - jump).coerceAtLeast(0L))
-                                    else p.seekTo((p.currentPosition + jump).coerceAtMost(p.duration.takeIf { it > 0 } ?: Long.MAX_VALUE))
-                                },
-                                onLongPress = { player?.setPlaybackSpeed(2f) },
-                                onPress = {
-                                    try { awaitRelease() } finally { player?.setPlaybackSpeed(speed) }
-                                }
-                            )
+                        val detector = GestureDetector(c, object : GestureDetector.SimpleOnGestureListener() {
+                            override fun onDoubleTap(e: MotionEvent): Boolean {
+                                val p = this@apply.player ?: return false
+                                val jump = 10_000L
+                                if (e.x < width / 2f) p.seekTo((p.currentPosition - jump).coerceAtLeast(0L))
+                                else p.seekTo((p.currentPosition + jump).coerceAtMost(p.duration.takeIf { it > 0 } ?: Long.MAX_VALUE))
+                                return true
+                            }
+                            override fun onLongPress(e: MotionEvent) {
+                                this@apply.player?.setPlaybackSpeed(2f)
+                            }
+                        })
+                        setOnTouchListener { _, event ->
+                            detector.onTouchEvent(event)
+                            if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) {
+                                this.player?.setPlaybackSpeed(speed)
+                            }
+                            false
                         }
-                    )
+                    } }, update = { it.player = player }, modifier = Modifier.fillMaxSize())
                     Row(
                         Modifier.align(Alignment.TopStart).fillMaxWidth()
                             .background(Brush.verticalGradient(listOf(Color(0x99000000), Color.Transparent)))
