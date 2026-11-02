@@ -113,6 +113,7 @@ private fun VaultApp() {
         }
     }
     fun closePlayer() {
+        player?.pause()
         val p = player
         val f = active
         if (p != null && f != null) save(films.map { if (it.uri == f.uri) it.copy(position = p.currentPosition) else it })
