@@ -4,6 +4,11 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.app.Activity
+import android.view.View
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -29,6 +34,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.geometry.Offset
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
@@ -41,6 +48,17 @@ private val panel = Color(0xFF151A27)
 private val muted = Color(0xFF9BA4B8)
 private val pink = Color(0xFFFF4D6D)
 private val mint = Color(0xFF69E0C0)
+
+private fun setImmersive(activity: Activity, enabled: Boolean) {
+    WindowCompat.setDecorFitsSystemWindows(activity.window, !enabled)
+    val controller = WindowInsetsControllerCompat(activity.window, activity.window.decorView)
+    if (enabled) {
+        controller.hide(WindowInsetsCompat.Type.statusBars() or WindowInsetsCompat.Type.navigationBars())
+        controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+    } else {
+        controller.show(WindowInsetsCompat.Type.statusBars() or WindowInsetsCompat.Type.navigationBars())
+    }
+}
 private data class Film(val uri: String, val title: String, val favorite: Boolean = false, val position: Long = 0L)
 
 class MainActivity : ComponentActivity() {
@@ -55,6 +73,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun VaultApp() {
     val context = LocalContext.current
+    val activity = context as? Activity
     val prefs = remember { context.getSharedPreferences("vault", Context.MODE_PRIVATE) }
     var films by remember { mutableStateOf(readFilms(prefs)) }
     var tab by remember { mutableStateOf("Home") }
@@ -84,6 +103,7 @@ private fun VaultApp() {
     fun play(f: Film) {
         player?.release()
         active = f
+        activity?.let { setImmersive(it, true) }
         player = ExoPlayer.Builder(context).build().apply {
             setMediaItem(MediaItem.fromUri(Uri.parse(f.uri)))
             prepare()
@@ -99,15 +119,44 @@ private fun VaultApp() {
         player?.release()
         player = null
         active = null
+        activity?.let { setImmersive(it, false) }
     }
 
     MaterialTheme(colorScheme = darkColorScheme(background = bg, surface = panel, primary = pink, secondary = mint)) {
         Surface(Modifier.fillMaxSize(), color = bg) {
             if (active != null && player != null) {
-                Column(Modifier.fillMaxSize()) {
-                    Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = ::closePlayer) { Icon(Icons.Default.ArrowBack, "Back") }
-                        Text(active!!.title, Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Bold)
+                Box(Modifier.fillMaxSize().background(Color.Black)) {
+                    AndroidView(factory = { c -> PlayerView(c).apply {
+                        this.player = player
+                        useController = true
+                        resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
+                        setShowFastForwardButton(true)
+                        setShowRewindButton(true)
+                    } }, update = { it.player = player }, modifier = Modifier.fillMaxSize())
+                    Box(
+                        Modifier.fillMaxSize().pointerInput(player) {
+                            detectTapGestures(
+                                onDoubleTap = { point ->
+                                    val p = player ?: return@detectTapGestures
+                                    val jump = 10_000L
+                                    if (point.x < size.width / 2f) p.seekTo((p.currentPosition - jump).coerceAtLeast(0L))
+                                    else p.seekTo((p.currentPosition + jump).coerceAtMost(p.duration.takeIf { it > 0 } ?: Long.MAX_VALUE))
+                                },
+                                onLongPress = { player?.setPlaybackSpeed(2f) },
+                                onPress = {
+                                    try { awaitRelease() } finally { player?.setPlaybackSpeed(speed) }
+                                }
+                            )
+                        }
+                    )
+                    Row(
+                        Modifier.align(Alignment.TopStart).fillMaxWidth()
+                            .background(Brush.verticalGradient(listOf(Color(0x99000000), Color.Transparent)))
+                            .padding(horizontal = 8.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(onClick = ::closePlayer) { Icon(Icons.Default.ArrowBack, "Exit full screen", tint = Color.White) }
+                        Text(active!!.title, Modifier.weight(1f), color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Bold)
                         Box {
                             TextButton(onClick = { speedMenu = true }) { Text(speed.toString() + "x", color = pink) }
                             DropdownMenu(expanded = speedMenu, onDismissRequest = { speedMenu = false }) {
@@ -117,18 +166,12 @@ private fun VaultApp() {
                             }
                         }
                     }
-                    AndroidView(factory = { c -> PlayerView(c).apply {
-                        this.player = player
-                        useController = true
-                        resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
-                        setShowFastForwardButton(true)
-                        setShowRewindButton(true)
-                    } }, update = { it.player = player }, modifier = Modifier.fillMaxWidth().weight(1f))
-                    Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.WifiOff, null, tint = mint)
-                        Spacer(Modifier.width(8.dp))
-                        Text("Offline playback • progress saved on this device", color = muted, fontSize = 12.sp)
-                    }
+                    Text(
+                        "Double-tap left/right: −10s / +10s  •  Hold: 2×",
+                        Modifier.align(Alignment.BottomCenter).padding(bottom = 20.dp)
+                            .clip(RoundedCornerShape(14.dp)).background(Color(0x99000000)).padding(horizontal = 14.dp, vertical = 8.dp),
+                        color = Color.White, fontSize = 11.sp
+                    )
                 }
             } else {
                 Column(Modifier.fillMaxSize()) {
