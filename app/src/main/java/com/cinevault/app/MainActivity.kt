@@ -4,6 +4,9 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.media.audiofx.Equalizer
+import android.media.audiofx.BassBoost
+import android.media.audiofx.Virtualizer
 import android.app.Activity
 import android.view.View
 import android.view.GestureDetector
@@ -81,7 +84,40 @@ private fun VaultApp() {
     var active by remember { mutableStateOf<Film?>(null) }
     var speed by remember { mutableFloatStateOf(1f) }
     var speedMenu by remember { mutableStateOf(false) }
+    var fxMenu by remember { mutableStateOf(false) }
+    var fxPreset by remember { mutableStateOf("Normal") }
     var player by remember { mutableStateOf<ExoPlayer?>(null) }
+    var equalizer by remember { mutableStateOf<Equalizer?>(null) }
+    var bassBoost by remember { mutableStateOf<BassBoost?>(null) }
+    var virtualizer by remember { mutableStateOf<Virtualizer?>(null) }
+
+    fun applyFx(preset: String) {
+        fxPreset = preset
+        try {
+            val eq = equalizer
+            if (eq != null) {
+                for (i in 0 until eq.numberOfBands.toInt()) {
+                    val hz = eq.getCenterFreq(i.toShort()) / 1000
+                    val boost = when (preset) {
+                        "Bass Boost" -> if (hz < 250) 650 else 0
+                        "Voice" -> if (hz in 500..4000) 450 else if (hz < 150) -250 else 0
+                        "Cinema" -> if (hz < 200) 350 else if (hz > 5000) 250 else 0
+                        else -> 0
+                    }.coerceIn(eq.bandLevelRange[0].toInt(), eq.bandLevelRange[1].toInt())
+                    eq.setBandLevel(i.toShort(), boost.toShort())
+                }
+            }
+            bassBoost?.setStrength(if (preset == "Bass Boost" || preset == "Cinema") 650 else 0)
+            virtualizer?.setStrength(if (preset == "Cinema") 450 else 0)
+        } catch (_: Exception) { }
+    }
+
+    fun releaseFx() {
+        try { equalizer?.release() } catch (_: Exception) {}
+        try { bassBoost?.release() } catch (_: Exception) {}
+        try { virtualizer?.release() } catch (_: Exception) {}
+        equalizer = null; bassBoost = null; virtualizer = null
+    }
 
     fun save(list: List<Film>) {
         films = list
@@ -101,7 +137,9 @@ private fun VaultApp() {
     }
     fun pick() = picker.launch(arrayOf("video/*"))
     fun play(f: Film) {
+        player?.pause()
         player?.release()
+        releaseFx()
         active = f
         activity?.let { setImmersive(it, true) }
         player = ExoPlayer.Builder(context).build().apply {
@@ -111,13 +149,24 @@ private fun VaultApp() {
             playWhenReady = true
             setPlaybackSpeed(speed)
         }
+        try {
+            val session = player?.audioSessionId ?: 0
+            if (session != 0) {
+                equalizer = Equalizer(0, session).apply { enabled = true }
+                bassBoost = BassBoost(0, session).apply { enabled = true }
+                virtualizer = Virtualizer(0, session).apply { enabled = true }
+                applyFx(fxPreset)
+            }
+        } catch (_: Exception) { releaseFx() }
     }
     fun closePlayer() {
         player?.pause()
         val p = player
         val f = active
         if (p != null && f != null) save(films.map { if (it.uri == f.uri) it.copy(position = p.currentPosition) else it })
+        player?.pause()
         player?.release()
+        releaseFx()
         player = null
         active = null
         activity?.let { setImmersive(it, false) }
@@ -161,6 +210,15 @@ private fun VaultApp() {
                     ) {
                         IconButton(onClick = ::closePlayer) { Icon(Icons.Default.ArrowBack, "Exit full screen", tint = Color.White) }
                         Text(active!!.title, Modifier.weight(1f), color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Bold)
+                        Box {
+                            TextButton(onClick = { fxMenu = true }) { Text("FX", color = mint) }
+                            DropdownMenu(expanded = fxMenu, onDismissRequest = { fxMenu = false }) {
+                                listOf("Normal", "Bass Boost", "Cinema", "Voice").forEach { preset ->
+                                    DropdownMenuItem(text = { Text(if (fxPreset == preset) "✓ $preset" else preset) },
+                                        onClick = { applyFx(preset); fxMenu = false })
+                                }
+                            }
+                        }
                         Box {
                             TextButton(onClick = { speedMenu = true }) { Text(speed.toString() + "x", color = pink) }
                             DropdownMenu(expanded = speedMenu, onDismissRequest = { speedMenu = false }) {
