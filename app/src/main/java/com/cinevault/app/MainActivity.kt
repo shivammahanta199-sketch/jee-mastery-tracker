@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
@@ -86,6 +87,7 @@ private fun VaultApp() {
     var search by remember { mutableStateOf("") }
     var active by remember { mutableStateOf<Film?>(null) }
     var speed by remember { mutableFloatStateOf(prefs.getFloat("playback_speed", 1f)) }
+    val currentSpeed by rememberUpdatedState(speed)
     var isFullscreen by remember { mutableStateOf(true) }
     var speedMenu by remember { mutableStateOf(false) }
     var fxMenu by remember { mutableStateOf(false) }
@@ -202,9 +204,13 @@ private fun VaultApp() {
                     AndroidView(factory = { c -> PlayerView(c).apply {
                         this.player = player
                         useController = true
+                        controllerAutoShow = true
+                        controllerHideOnTouch = true
                         resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
                         setShowFastForwardButton(true)
                         setShowRewindButton(true)
+                        keepScreenOn = true
+                        var longPressBoosted = false
                         val detector = GestureDetector(c, object : GestureDetector.SimpleOnGestureListener() {
                             override fun onDoubleTap(e: MotionEvent): Boolean {
                                 val p = this@apply.player ?: return false
@@ -214,19 +220,26 @@ private fun VaultApp() {
                                 return true
                             }
                             override fun onLongPress(e: MotionEvent) {
+                                longPressBoosted = true
                                 this@apply.player?.setPlaybackSpeed(2f)
                             }
                         })
                         setOnTouchListener { _, event ->
                             detector.onTouchEvent(event)
                             if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) {
-                                this.player?.setPlaybackSpeed(speed)
+                                if (longPressBoosted) {
+                                    this.player?.setPlaybackSpeed(currentSpeed)
+                                    longPressBoosted = false
+                                }
                             }
                             false
                         }
-                    } }, update = { it.player = player }, modifier = Modifier.fillMaxSize())
+                    } }, update = { view ->
+                        view.player = player
+                        view.keepScreenOn = player?.isPlaying == true
+                    }, modifier = Modifier.fillMaxSize())
                     Row(
-                        Modifier.align(Alignment.TopStart).fillMaxWidth()
+                        Modifier.align(Alignment.TopStart).zIndex(2f).fillMaxWidth()
                             .background(Brush.verticalGradient(listOf(Color(0x99000000), Color.Transparent)))
                             .padding(horizontal = 8.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically
