@@ -14,6 +14,9 @@ import android.view.MotionEvent
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.LifecycleOwner
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -82,10 +85,11 @@ private fun VaultApp() {
     var tab by remember { mutableStateOf("Home") }
     var search by remember { mutableStateOf("") }
     var active by remember { mutableStateOf<Film?>(null) }
-    var speed by remember { mutableFloatStateOf(1f) }
+    var speed by remember { mutableFloatStateOf(prefs.getFloat("playback_speed", 1f)) }
+    var isFullscreen by remember { mutableStateOf(true) }
     var speedMenu by remember { mutableStateOf(false) }
     var fxMenu by remember { mutableStateOf(false) }
-    var fxPreset by remember { mutableStateOf("Normal") }
+    var fxPreset by remember { mutableStateOf(prefs.getString("audio_preset", "Normal") ?: "Normal") }
     var player by remember { mutableStateOf<ExoPlayer?>(null) }
     var equalizer by remember { mutableStateOf<Equalizer?>(null) }
     var bassBoost by remember { mutableStateOf<BassBoost?>(null) }
@@ -93,6 +97,7 @@ private fun VaultApp() {
 
     fun applyFx(preset: String) {
         fxPreset = preset
+        prefs.edit().putString("audio_preset", preset).apply()
         try {
             val eq = equalizer
             if (eq != null) {
@@ -141,6 +146,7 @@ private fun VaultApp() {
         player?.release()
         releaseFx()
         active = f
+        isFullscreen = true
         activity?.let { setImmersive(it, true) }
         player = ExoPlayer.Builder(context).build().apply {
             setMediaItem(MediaItem.fromUri(Uri.parse(f.uri)))
@@ -169,7 +175,24 @@ private fun VaultApp() {
         releaseFx()
         player = null
         active = null
+        isFullscreen = false
         activity?.let { setImmersive(it, false) }
+    }
+
+    val lifecycleOwner = context as? LifecycleOwner
+    DisposableEffect(player, active, lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_STOP) {
+                player?.pause()
+                val currentPlayer = player
+                val currentFilm = active
+                if (currentPlayer != null && currentFilm != null) {
+                    save(films.map { if (it.uri == currentFilm.uri) it.copy(position = currentPlayer.currentPosition) else it })
+                }
+            }
+        }
+        lifecycleOwner?.lifecycle?.addObserver(observer)
+        onDispose { lifecycleOwner?.lifecycle?.removeObserver(observer) }
     }
 
     MaterialTheme(colorScheme = darkColorScheme(background = bg, surface = panel, primary = pink, secondary = mint)) {
@@ -219,21 +242,18 @@ private fun VaultApp() {
                                 }
                             }
                         }
+                        IconButton(onClick = { isFullscreen = !isFullscreen; activity?.let { setImmersive(it, isFullscreen) } }) {
+                            Icon(if (isFullscreen) Icons.Default.FullscreenExit else Icons.Default.Fullscreen, if (isFullscreen) "Exit full screen" else "Enter full screen", tint = Color.White)
+                        }
                         Box {
                             TextButton(onClick = { speedMenu = true }) { Text(speed.toString() + "x", color = pink) }
                             DropdownMenu(expanded = speedMenu, onDismissRequest = { speedMenu = false }) {
                                 listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f).forEach { v ->
-                                    DropdownMenuItem(text = { Text(v.toString() + "x") }, onClick = { speed = v; player?.setPlaybackSpeed(v); speedMenu = false })
+                                    DropdownMenuItem(text = { Text(v.toString() + "x") }, onClick = { speed = v; prefs.edit().putFloat("playback_speed", v).apply(); player?.setPlaybackSpeed(v); speedMenu = false })
                                 }
                             }
                         }
                     }
-                    Text(
-                        "Double-tap left/right: −10s / +10s  •  Hold: 2×",
-                        Modifier.align(Alignment.BottomCenter).padding(bottom = 20.dp)
-                            .clip(RoundedCornerShape(14.dp)).background(Color(0x99000000)).padding(horizontal = 14.dp, vertical = 8.dp),
-                        color = Color.White, fontSize = 11.sp
-                    )
                 }
             } else {
                 Column(Modifier.fillMaxSize()) {
